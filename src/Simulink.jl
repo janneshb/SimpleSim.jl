@@ -4,6 +4,7 @@ import Base.push!
 using Random
 
 global DEFAULT_Δt = 1//100 # default step size for CT systems
+global DEBUG = true
 global MODEL_CALLS_DISABLED = false
 
 # = UTILS = #
@@ -101,7 +102,7 @@ function loop!(model_working_copy, model, u, t, Δt_max, T)
         return false, T
     end
 
-    println(t_next)
+    DEBUG ? println("t = ", float(t_next)) : nothing
     if due(model_working_copy, t_next)
         # evolve state
         u_t_next = u(t_next)

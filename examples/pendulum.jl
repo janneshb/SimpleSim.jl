@@ -2,11 +2,15 @@ using Simulink
 using StaticArrays
 
 # dynamic rule for the damped pendulum
-fc_pendulum(x, u, p, t) = SVector(x[2], -p.λ*x[2] - p.ω2*sin(x[1]))
+fc_pendulum(x, u, p, t; models) = SVector(x[2], -p.λ*x[2] - p.ω2*sin(x[1]))
 
 # measurement model
-yc_pendulum(x, u, p, t) = x
+yc_pendulum(x, u, p, t; models) = x
 
+x0 = [
+    30.0 *π/180.0,   #*s/s,
+    0.0              #*1/s
+]
 pendulum = (
     p = (
         g = 9.81,
@@ -14,19 +18,16 @@ pendulum = (
         ω2 = 9.81/0.5, # equals g/L
         λ = 0.3,
     ),
+    xc0 = x0,
     fc = fc_pendulum,
     yc = yc_pendulum,
 )
 
 
 T = 30.0
-x0 = [
-    30.0 *π/180.0,   #*s/s,
-    0.0              #*1/s
-]
 u(t) = 0.0
 
-Y, t = simulate(pendulum, T = T, x0 = x0, u = u)
+history = simulate(pendulum, T = T, uc = u)
 
 using Plots
-plot(t, Y[1, :])
+plot(history.tcs, getindex.(history.ycs, 1))
