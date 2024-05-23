@@ -1,5 +1,5 @@
-name = "Simulink"
-uuid = "7ebaba15-baa4-4630-8bae-f45e1264f6d4"
+name = "Overdot"
+uuid = "aa6ef55e-8b31-4da0-ae8b-aa68f8efe0d8"
 authors = ["Jannes Huehnerbein <j.huehnerbein@icloud.com>"]
 version = "0.1.0"
 
