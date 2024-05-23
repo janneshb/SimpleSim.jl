@@ -3,37 +3,16 @@ module Simulink
 import Base.push!
 using Random
 
-DEFAULT_Δt = 1//100 # default step size for CT systems
-
-MODEL_CALLS_DISABLED = false
-macro safeguard_on()
-    quote
-        MODEL_CALLS_DISABLED = true
-    end
-end
-
-macro safeguard_off()
-    quote
-        MODEL_CALLS_DISABLED = false
-    end
-end
-
-#=
-if isHybrid(model)
-    return simulate_hybrid_system(model; kwargs...)
-elseif isCT(model)
-    return simulate_ct_system(model; kwargs...)
-elseif isDT(model)
-    return simulate_dt_system(model; kwargs...)
-else
-    @error "Invalid system definition. At least one of the following properties has to be defined: (:fc, :fd)."
-end
-=#
+global DEFAULT_Δt = 1//100 # default step size for CT systems
+global MODEL_CALLS_DISABLED = false
 
 # = UTILS = #
 Base.@inline maybe_rationalize(x::AbstractFloat)::Rational{Int64}   = rationalize(x)
 Base.@inline maybe_rationalize(x::Rational{Int64})::Rational{Int64} = x
 Base.@inline maybe_rationalize(x)::Rational{Int64}                  = Rational{Int64}(x)
+
+macro safeguard_on(); :(global MODEL_CALLS_DISABLED = true); end
+macro safeguard_off(); :(global MODEL_CALLS_DISABLED = false); end
 
 function find_min_Δt(model, Δt_prev)
     Δt = Δt_prev
@@ -49,6 +28,7 @@ function find_min_Δt(model, Δt_prev)
     return min(Δt, DEFAULT_Δt)
 end
 
+# = WORKING COPY MANIPULATORS = #
 function init_working_copy(model, t0, Δt, uc0, ud0)
     sub_tree = (;)
     if hasproperty(model, :models)
@@ -59,7 +39,6 @@ function init_working_copy(model, t0, Δt, uc0, ud0)
     uc0 = uc0 === nothing ? (hasproperty(model, :uc0) ? model.uc0 : nothing) : uc0
     xd0 = hasproperty(model, :xd0) ? model.xd0 : nothing
     ud0 = uc0 === nothing ? (hasproperty(model, :ud0) ? model.ud0 : nothing) : ud0
-
 
     return (
         # callable = model_callable,
@@ -76,32 +55,13 @@ function init_working_copy(model, t0, Δt, uc0, ud0)
 end
 
 function update_working_copy!(model_working_copy, t, xc, yc)
-    push!(model_working_copy.tcs, t)
-
-    if xc !== nothing
-        push!(model_working_copy.xcs, xc)
-    end
-
-    if yc !== nothing
-        push!(model_working_copy.ycs, yc)
-    end
-end
-
-function model_callable(u, t, model, model_working_copy, Δt)
-    # TODO: extend for DT
-    # update the model (only once) and return the new output
-    xc_next = model_working_copy.xcs[end]
-    submodels = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
-
-    if due(model_working_copy, t)
-        xc_next = step_ct(model.fc, model_working_copy.xcs[end], u, model.p, t, Δt, submodels)
-    end
-    yc_next = model.yc(xc_next, u, model.p, t; models = submodels)
-    return (xc_next, yc_next)
+    push!(model_working_copy.tcs, t) # always store the time if the model was called
+    xc !== nothing ? push!(model_working_copy.xcs, xc) : nothing
+    yc !== nothing ? push!(model_working_copy.ycs, yc) : nothing
 end
 
 # = CORE = #
-export simulate, @call
+export simulate
 function simulate(model; T,
         uc = (t) -> nothing,
         ud = (t) -> nothing,
@@ -157,6 +117,7 @@ function loop!(model_working_copy, model, u, t, Δt_max, T)
 end
 
 # = CALLING A MDOEL FROM WITHIN THE SIM = #
+export @call
 macro call(model, u)
     quote
         if MODEL_CALLS_DISABLED
@@ -172,6 +133,19 @@ macro call(model, u)
         update_working_copy!($(esc(model)), $(esc(:t)), x, y)
         y
     end
+end
+
+function model_callable(u, t, model, model_working_copy, Δt)
+    # TODO: extend for DT
+    # update the model (only once) and return the new output
+    xc_next = model_working_copy.xcs[end]
+    submodels = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
+
+    if due(model_working_copy, t)
+        xc_next = step_ct(model.fc, model_working_copy.xcs[end], u, model.p, t, Δt, submodels)
+    end
+    yc_next = model.yc(xc_next, u, model.p, t; models = submodels)
+    return (xc_next, yc_next)
 end
 
 # = MODEL ANALYSIS = #
@@ -193,21 +167,6 @@ function due(model, t)
     end
     return false
 end
-
-#=
-function eval_recursively(f::F, model) where {F}
-    downstream = hasproperty(model, :models) ? (eval_recursively(f, m_i) for m_i in model.models) : (;)
-    return f(model, downstream)
-end
-
-function eval_recursively(f::F, models::Tuple) where {F}
-    return ((eval_recursively(f, m_i) for m_i in models)...,)
-end
-
-function eval_recursively(f::F, models::Vector) where {F}
-    return [eval_recursively(f, m_i) for m_i in models]
-end
-=#
 
 # = STEP CT = #
 function step_rk4(fc, x, u, p, t, Δt, submodel_tree)
@@ -243,19 +202,5 @@ end
 function step_dt(fd, x, u, p, t)
     return fd(x, u, p, t)
 end
-
-# = LOGGING = #
-#=
-struct ModelHistory{TC, XC, YC, TD, XD, YD, M}
-    tc::TC
-    xc::XC
-    xc_dot::XC
-    yc::YC
-    td::TD
-    xd::XD
-    yd::YD
-    models::M
-end
-=#
 
 end # module Simulink
