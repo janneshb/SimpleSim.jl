@@ -45,7 +45,8 @@ function init_working_copy(model, t0, Δt, uc0, ud0)
 
     return (
         # callable = model_callable,
-        callable = (u, t, model_working_copy) -> model_callable(u, t, model, model_working_copy, Δt),
+        callable_ct = (u, t, model_working_copy) -> model_callable_ct(u, t, model, model_working_copy, Δt),
+        callable_dt = (u, t, model_working_copy) -> model_callable_dt(u, t, model, model_working_copy),
         Δt = hasproperty(model, :Δt) ? model.Δt : Δt,
         # the following store the latest state
         tcs = hasproperty(model, :yc) ? [t0,] : nothing,
@@ -133,35 +134,76 @@ function loop!(model_working_copy, model, uc, ud, t, Δt_max, T)
 end
 
 # = CALLING A MDOEL FROM WITHIN THE SIM = #
-export @call
+export @call, @call_ct, @call_dt
 macro call(model, u)
+    # TODO: there is a way to simplify this
+    quote
+        model_to_call = $(esc(model))
+        t = $(esc(:t))
+        if isHybrid(model_to_call)
+            @error "@call is ambiguous for hybrid systems. Please specify using @call_ct or @call_dt."
+        elseif isCT(model_to_call)
+            @call_ct model_to_call $(esc(u))
+        elseif isDT(model_to_call)
+            @call_dt model_to_call $(esc(u))
+        end
+    end
+end
+
+macro call_ct(model, u)
     quote
         if MODEL_CALLS_DISABLED
             @error "@call should not be called in the dynamics or step function. Use :xc and :xd to access the previous state instead."
         end
 
         model_to_call = $(esc(model))
-        (x, y) = model_to_call.callable(
+        (xc, yc) = model_to_call.callable_ct(
             $(esc(u)),
             $(esc(:t)),
             model_to_call,
         )
-        update_working_copy_ct!($(esc(model)), $(esc(:t)), x, y)
-        y
+        update_working_copy_ct!($(esc(model)), $(esc(:t)), xc, yc)
+        yc
     end
 end
 
-function model_callable(u, t, model, model_working_copy, Δt)
-    # TODO: extend for DT
-    # update the model (only once) and return the new output
+macro call_dt(model, u)
+    quote
+        if MODEL_CALLS_DISABLED
+            @error "@call should not be called in the dynamics or step function. Use :xc and :xd to access the previous state instead."
+        end
+
+        model_to_call = $(esc(model))
+        (xd, yd) = model_to_call.callable_dt(
+            $(esc(u)),
+            $(esc(:t)),
+            model_to_call
+        )
+        update_working_copy_dt!($(esc(model)), $(esc(:t)), xd, yd)
+        yd
+    end
+end
+
+function model_callable_ct(uc, t, model, model_working_copy, Δt)
     xc_next = model_working_copy.xcs[end]
     submodels = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
 
     if due(model_working_copy, t)
-        xc_next = step_ct(model.fc, model_working_copy.xcs[end], u, model.p, t, Δt, submodels)
+        xc_next = step_ct(model.fc, model_working_copy.xcs[end], uc, model.p, t, Δt, submodels)
     end
-    yc_next = model.yc(xc_next, u, model.p, t; models = submodels)
+    yc_next = model.yc(xc_next, uc, model.p, t; models = submodels)
     return (xc_next, yc_next)
+end
+
+function model_callable_dt(ud, t, mdoel, model_working_copy)
+    xd_next = model_working_copy.xds[end]
+    submodels = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
+
+    if due(model_working_copy, t)
+        xd_next = step_dt(model.fd, model_working_copy.xds[end], ud, model.p, t, submodels)
+    end
+    yd_next = model.yd(xd_next, ud, mdoel.p, t; models = submodels)
+    return (xd_next, yd_next)
 end
 
 # = MODEL ANALYSIS = #
