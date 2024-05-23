@@ -3,8 +3,9 @@ module Simulink
 import Base.push!
 using Random
 
-global DEFAULT_Δt = 1//100 # default step size for CT systems
+global DEFAULT_Δt = 1//100 # default step size for CT systems, must be rational!
 global DEBUG = true
+global DISPLAY_PROGRESS = true
 global MODEL_CALLS_DISABLED = false
 
 # = UTILS = #
@@ -18,7 +19,7 @@ macro safeguard_off(); :(global MODEL_CALLS_DISABLED = false); end
 function find_min_Δt(model, Δt_prev)
     Δt = Δt_prev
     if hasproperty(model, :Δt)
-        Δt = min(Δt, model.Δt)
+        Δt = gcd(Δt, maybe_rationalize(model.Δt))
     end
 
     if hasproperty(model, :models)
@@ -26,11 +27,12 @@ function find_min_Δt(model, Δt_prev)
             Δt = find_min_Δt(m_i, Δt)
         end
     end
-    return min(Δt, DEFAULT_Δt)
+    return gcd(Δt,maybe_rationalize(DEFAULT_Δt))
 end
 
 # = WORKING COPY MANIPULATORS = #
 function init_working_copy(model, t0, Δt, uc0, ud0)
+    # TODO: maybe we can find a way to omit the models kwarg when reaching the end of the tree
     sub_tree = (;)
     if hasproperty(model, :models)
         sub_tree = NamedTuple{keys(model.models)}(((init_working_copy(m_i, t0, Δt, nothing, nothing) for m_i in model.models)...,))
@@ -44,21 +46,28 @@ function init_working_copy(model, t0, Δt, uc0, ud0)
     return (
         # callable = model_callable,
         callable = (u, t, model_working_copy) -> model_callable(u, t, model, model_working_copy, Δt),
+        Δt = hasproperty(model, :Δt) ? model.Δt : Δt,
         # the following store the latest state
-        tcs = [t0,],
+        tcs = hasproperty(model, :yc) ? [t0,] : nothing,
         xcs = hasproperty(model, :fc) ? [xc0,] : nothing,
         ycs = hasproperty(model, :yc) ? [model.yc(xc0, uc0, model.p, t0; models = sub_tree),] : nothing,
-        tds = [t0,],
+        tds = hasproperty(model, :yd) ? [t0,] : nothing,
         xds = hasproperty(model, :fd) ? [xd0,] : nothing,
         yds = hasproperty(model, :yd) ? [model.yd(xd0, ud0, model.p, t0; models = sub_tree),] : nothing,
         models = sub_tree,
     )
 end
 
-function update_working_copy!(model_working_copy, t, xc, yc)
+function update_working_copy_ct!(model_working_copy, t, xc, yc)
     push!(model_working_copy.tcs, t) # always store the time if the model was called
     xc !== nothing ? push!(model_working_copy.xcs, xc) : nothing
     yc !== nothing ? push!(model_working_copy.ycs, yc) : nothing
+end
+
+function update_working_copy_dt!(model_working_copy, t, xd, yd)
+    push!(model_working_copy.tds, t) # always store the time if the model was called
+    xd !== nothing ? push!(model_working_copy.xds, xd) : nothing
+    yd !== nothing ? push!(model_working_copy.yds, yd) : nothing
 end
 
 # = CORE = #
@@ -86,33 +95,39 @@ function simulate(model; T,
     model_working_copy = init_working_copy(model, t0, Δt_max, uc(t0), ud(t0)) # TODO: better variable name
 
     # simulate all systems that are due now
-    simulation_is_running, t = loop!(model_working_copy, model, uc, t0, Δt_max, T)
+    t = t0
+    simulation_is_running = true
     while simulation_is_running
-        simulation_is_running, t = loop!(model_working_copy, model, uc, t, Δt_max, T)
+        simulation_is_running, t = loop!(model_working_copy, model, uc, ud, t, Δt_max, T)
     end
     return model_working_copy
 end
 
 # = THE MAIN LOOP = #
-function loop!(model_working_copy, model, u, t, Δt_max, T)
-    # TODO: extend for DT
+function loop!(model_working_copy, model, uc, ud, t, Δt_max, T)
     t_next = t + Δt_max
 
     if t_next > T # end criterion
         return false, T
     end
 
-    DEBUG ? println("t = ", float(t_next)) : nothing
+    DEBUG || DISPLAY_PROGRESS ? println("t = ", float(t_next)) : nothing
     if due(model_working_copy, t_next)
         # evolve state
-        u_t_next = u(t_next)
-        x_old = model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end]
-        x_next = step_ct(model.fc, x_old, u_t_next, model.p, t_next, Δt_max, model_working_copy.models)
+        uc_t_next = uc(t_next)
+        ud_t_next = ud(t_next)
 
-        # compute overall output
-        y_next = model.yc(x_next, u_t_next, model.p, t_next, models = model_working_copy.models)
-
-        update_working_copy!(model_working_copy, t_next, x_next, y_next)
+        if isCT(model) || isHybrid(model)
+            xc_prev = model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end]
+            xc_next = step_ct(model.fc, xc_prev, uc_t_next, model.p, t_next, Δt_max, model_working_copy.models)
+            yc_next = model.yc(xc_next, uc_t_next, model.p, t_next, models = model_working_copy.models)
+            update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next)
+        elseif isDT(model) || isHybrid(model)
+            xd_prev = model_working_copy.xds === nothing ? nothing : model_working_copy.xds[end]
+            xd_next = step_dt(model.fd, xd_prev, ud_t_next, model.p, t_next, model_working_copy.models)
+            yd_next = model.yd(xd_next, ud_t_next, model.p, t_next, models = model_working_copy.models)
+            update_working_copy_dt!(model_working_copy, t_next, xd_next, yd_next)
+        end
     end
     return true, t_next
 end
@@ -131,7 +146,7 @@ macro call(model, u)
             $(esc(:t)),
             model_to_call,
         )
-        update_working_copy!($(esc(model)), $(esc(:t)), x, y)
+        update_working_copy_ct!($(esc(model)), $(esc(:t)), x, y)
         y
     end
 end
@@ -151,20 +166,27 @@ end
 
 # = MODEL ANALYSIS = #
 function isCT(model)
-    return (hasproperty(model, :fc) && !hasproperty(model, :fd)) || (model.xcs !== nothing && model.xds === nothing) || (model.xcs === nothing && model.xds === nothing) # last option is for state-less wrapper-models
+    return (hasproperty(model, :fc) && !hasproperty(model, :fd)) ||
+            (hasproperty(model, :xcs) && hasproperty(model, :xds) && model.xcs !== nothing && model.xds === nothing) ||
+            (hasproperty(model, :xcs) && hasproperty(model, :xds) && model.xcs === nothing && model.xds === nothing) # last option is for state-less wrapper-models
 end
 
 function isDT(model)
-    return (hasproperty(model, :fd) && !hasproperty(model, :fc)) || (model.xds !== nothing && model.xcs === nothing)
+    return (hasproperty(model, :fd) && !hasproperty(model, :fc)) ||
+            (hasproperty(model, :xcs) && hasproperty(model, :xds) && model.xds !== nothing && model.xcs === nothing)
 end
 
 function isHybrid(model)
-    return (hasproperty(model, :fd) && hasproperty(model, :fc)) || (model.xcs !== nothing && model.xds !== nothing)
+    return (hasproperty(model, :fd) && hasproperty(model, :fc)) ||
+            (hasproperty(model, :xcs) && hasproperty(model, :xds) && model.xcs !== nothing && model.xds !== nothing)
 end
 
 function due(model, t)
     if isCT(model)
         return model.tcs[end] < t # CT models can always be updated if time has progressed
+    end
+    if isDT(model)
+        return model.tds[end] + model.Δt <= t
     end
     return false
 end
@@ -200,8 +222,8 @@ function step_ct(fc, x, args...)
 end
 
 # = STEP DT = #
-function step_dt(fd, x, u, p, t)
-    return fd(x, u, p, t)
+function step_dt(fd, x, u, p, t, submodel_tree)
+    return fd(x, u, p, t, models = submodel_tree)
 end
 
 end # module Simulink

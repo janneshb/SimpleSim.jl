@@ -35,7 +35,7 @@ x0 = [
 ]
 u(t) = 0.0
 
-Y, t = simulate(pendulum_discrete, T = T, Δt = Δt, x0 = x0, u = u)
+Y, t = simulate(pendulum_hybrid, T = T, Δt = Δt, x0 = x0, u = u)
 
-using Plots
-plot(t, Y[1, :], seriestype = :steppost)
+#using Plots
+#plot(t, Y[1, :], seriestype = :steppost)
