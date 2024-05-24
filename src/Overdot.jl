@@ -34,7 +34,6 @@ global CONTEXT = Unknown
 function init_working_copy(model, t0, Δt, uc0, ud0; level = 0)
     DEBUG && level == 0 ? println("Initializing models at t = ", float(t0)) : nothing
 
-    # TODO: maybe we can find a way to omit the models kwarg when reaching the end of the tree
     sub_tree = (;)
     if hasproperty(model, :models)
         sub_tree = NamedTuple{keys(model.models)}(((init_working_copy(m_i, t0, Δt, nothing, nothing; level = level + 1) for m_i in model.models)...,))
@@ -42,8 +41,17 @@ function init_working_copy(model, t0, Δt, uc0, ud0; level = 0)
 
     xc0 = hasproperty(model, :xc0) ? model.xc0 : nothing
     uc0 = uc0 === nothing ? (hasproperty(model, :uc0) ? model.uc0 : nothing) : uc0
+    ycs0 = hasproperty(model, :yc) ? 
+        (
+            length(sub_tree) > 0 ? [model.yc(xc0, uc0, model.p, t0; models = sub_tree),] : [model.yc(xc0, uc0, model.p, t0),]
+        ) : nothing
+    
     xd0 = hasproperty(model, :xd0) ? model.xd0 : nothing
     ud0 = uc0 === nothing ? (hasproperty(model, :ud0) ? model.ud0 : nothing) : ud0
+    yds0 = hasproperty(model, :yd) ? 
+        (
+            length(sub_tree) > 0 ? [model.yd(xd0, ud0, model.p, t0; models = sub_tree),] : [model.yd(xd0, ud0, model.p, t0),]
+        ) : nothing
 
     return (
         # callable = model_callable,
@@ -53,10 +61,10 @@ function init_working_copy(model, t0, Δt, uc0, ud0; level = 0)
         # the following store the latest state
         tcs = hasproperty(model, :yc) ? [t0,] : nothing,
         xcs = hasproperty(model, :fc) ? [xc0,] : nothing,
-        ycs = hasproperty(model, :yc) ? [model.yc(xc0, uc0, model.p, t0; models = sub_tree),] : nothing,
+        ycs = ycs0,
         tds = hasproperty(model, :yd) ? [t0,] : nothing,
         xds = hasproperty(model, :fd) ? [xd0,] : nothing,
-        yds = hasproperty(model, :yd) ? [model.yd(xd0, ud0, model.p, t0; models = sub_tree),] : nothing,
+        yds = yds0,
         models = sub_tree,
     )
 end
@@ -129,8 +137,9 @@ function loop!(model_working_copy, model, uc, ud, t, Δt_max, T, integrator)
     if due(model_working_copy, t_next)
         xc_prev = model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end]
         uc_t_next = uc(t_next)
+        sub_tree = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
         xc_next = step_ct(model.fc, xc_prev, uc_t_next, model.p, t_next, Δt_max, model_working_copy.models, integrator = integrator)
-        yc_next = model.yc(xc_next, uc_t_next, model.p, t_next, models = model_working_copy.models)
+        yc_next = length(sub_tree) > 0 ? model.yc(xc_next, uc_t_next, model.p, t_next, models = sub_tree) : model.yc(xc_next, uc_t_next, model.p, t_next)
         @call_completed
         update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next)
     end
@@ -139,8 +148,9 @@ function loop!(model_working_copy, model, uc, ud, t, Δt_max, T, integrator)
     if due(model_working_copy, t_next)
         xd_prev = model_working_copy.xds === nothing ? nothing : model_working_copy.xds[end]
         ud_t_next = ud(t_next)
+        sub_tree = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
         xd_next = step_dt(model.fd, xd_prev, ud_t_next, model.p, t_next, model_working_copy.models)
-        yd_next = model.yd(xd_next, ud_t_next, model.p, t_next, models = model_working_copy.models)
+        yd_next = length(sub_tree) > 0 ?  model.yd(xd_next, ud_t_next, model.p, t_next, models = model_working_copy.models) : model.yd(xd_next, ud_t_next, model.p, t_next)
         @call_completed
         update_working_copy_dt!(model_working_copy, t_next, xd_next, yd_next)
     end
@@ -210,7 +220,7 @@ function model_callable_ct(uc, t, model, model_working_copy, Δt)
         xc_next = step_ct(model.fc, model_working_copy.xcs[end], uc, model.p, t, Δt, submodels)
         updated_state = true
     end
-    yc_next = model.yc(xc_next, uc, model.p, t; models = submodels)
+    yc_next = length(submodels) > 0 ? model.yc(xc_next, uc, model.p, t; models = submodels) : model.yc(xc_next, uc, model.p, t)
     @call_completed
     return (xc_next, yc_next, updated_state)
 end
@@ -225,7 +235,7 @@ function model_callable_dt(ud, t, model, model_working_copy)
         xd_next = step_dt(model.fd, model_working_copy.xds[end], ud, model.p, t, submodels)
         updated_state = true
     end
-    yd_next = model.yd(xd_next, ud, model.p, t; models = submodels)
+    yd_next = length(submodels) > 0 ? model.yd(xd_next, ud, model.p, t; models = submodels) : model.yd(xd_next, ud, model.p, t)
     @call_completed
     return (xd_next, yd_next, updated_state)
 end
@@ -324,10 +334,11 @@ export OverdotIntegrator, RK4, Euler, Heun
 # https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods
 function step_rk4(fc, x, u, p, t, Δt, submodel_tree)
     @safeguard_on
-    k1 = fc(x,          u, p,    t, models = submodel_tree)
-    k2 = fc(x+k1*Δt/2,  u, p,    t + Δt/2, models = submodel_tree)
-    k3 = fc(x+k2*Δt/2,  u, p,    t + Δt/2, models = submodel_tree)
-    k4 = fc(x+k3*Δt,    u, p,    t + Δt, models = submodel_tree)
+    fc_wrapper(fc, x, u, p, t, models) = length(models) > 0 ? fc(x, u, p, t; models = models) : fc(x, u, p, t)
+    k1 = fc_wrapper(fc, x,          u, p,    t,         submodel_tree)
+    k2 = fc_wrapper(fc, x+k1*Δt/2,  u, p,    t + Δt/2,  submodel_tree)
+    k3 = fc_wrapper(fc, x+k2*Δt/2,  u, p,    t + Δt/2,  submodel_tree)
+    k4 = fc_wrapper(fc, x+k3*Δt,    u, p,    t + Δt,    submodel_tree)
     @safeguard_off
     return x + Δt*(k1 + 2*k2 + 2*k3 + k4)/6
 end
@@ -336,8 +347,9 @@ end
 # https://en.wikipedia.org/wiki/Heun%27s_method
 function step_heun(fc, x, u, p, t, Δt, submodel_tree)
     @safeguard_on
-    k1 = fc(x,            u, p, t,      models = submodel_tree)
-    k2 = fc(x + k1 * Δt,  u, p, t + Δt, models = submodel_tree)
+    fc_wrapper(fc, x, u, p, t, models) = length(models) > 0 ? fc(x, u, p, t; models = models) : fc(x, u, p, t)
+    k1 = fc_wrapper(fc, x,            u, p, t,      submodel_tree)
+    k2 = fc_wrapper(fc, x + k1 * Δt,  u, p, t + Δt, submodel_tree)
     @safeguard_off
     return x + (k1 + k2) * Δt / 2
 end
@@ -346,7 +358,7 @@ end
 # https://en.wikipedia.org/wiki/Euler_method
 function step_euler(fc, x, u, p, t, Δt, submodel_tree)
     @safeguard_on
-    k = fc(x, u, p, t, models = submodel_tree)
+    k = length(submodel_tree) > 0 ? fc(x, u, p, t, models = submodel_tree) : fc(x, u, p, t)
     @safeguard_off
     return x + Δt * k
 end
@@ -372,7 +384,7 @@ end
 
 # steps a discrete time model
 function step_dt(fd, x, u, p, t, submodel_tree)
-    return fd(x, u, p, t, models = submodel_tree)
+    return length(submodel_tree) > 0 ? fd(x, u, p, t, models = submodel_tree) : fd(x, u, p, t)
 end
 
 end # module Overdot

@@ -3,7 +3,7 @@ using StaticArrays
 
 # PLANT
 #
-function fc_inv_pendulum(x, u, p, t; models)
+function fc_inv_pendulum(x, u, p, t)
     # state vector: [z, z', θ, θ']
     # F(t) = u(t)
     g = p.g
@@ -28,7 +28,7 @@ function fc_inv_pendulum(x, u, p, t; models)
     return SVector(dz, ddz, dθ, ddθ)
 end
 
-yc_inv_pendulum(x, u, p, t; models) = SVector(x[3], x[4])
+yc_inv_pendulum(x, u, p, t) = SVector(x[3], x[4])
 
 inverted_pendulum = (
     p = (
@@ -49,11 +49,11 @@ inverted_pendulum = (
 
 # CONTROLLER
 #
-function fc_controls(x, e, p, t; models)
+function fc_controls(x, e, p, t)
     return SVector(e[2], e[1])
 end
 
-function yc_controls(x, u, p, t; models)
+function yc_controls(x, u, p, t)
     return p.k_p*x[1] + p.k_i*x[2]
 end
 

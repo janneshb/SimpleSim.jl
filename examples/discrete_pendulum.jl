@@ -2,10 +2,10 @@ using Overdot
 using StaticArrays
 
 # dynamic rule for the damped pendulum
-fd_pendulum(x, u, p, t; models) = p.A * x
+fd_pendulum(x, u, p, t) = p.A * x
 
 # measurement model
-yd_pendulum(x, u, p, t; models) = x
+yd_pendulum(x, u, p, t) = x
 
 x0 = [
     30.0 *π/180.0,   #*s/s,

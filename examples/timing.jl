@@ -2,15 +2,15 @@ using Overdot
 using StaticArrays
 
 
-function fc_inner_hybrid(x, u, p, t; models)
+function fc_inner_hybrid(x, u, p, t)
     return 1.0
 end
-yc_inner_hybrid(x, u, p, t; models) = x
+yc_inner_hybrid(x, u, p, t) = x
 
-function fd_inner_hybrid(x, u, p, t; models)
+function fd_inner_hybrid(x, u, p, t)
     return t
 end
-yd_inner_hybrid(x, u, p, t; models) = x
+yd_inner_hybrid(x, u, p, t) = x
 
 inner_hybrid = (
     p = (),
@@ -26,11 +26,11 @@ inner_hybrid = (
 )
 
 
-function fd_inner_dt2(x, u, p, t; models)
+function fd_inner_dt2(x, u, p, t)
     return t
 end
 
-function yd_inner_dt2(x, u, p, t; models)
+function yd_inner_dt2(x, u, p, t)
     return x
 end
 inner_dt2 = (
