@@ -5,7 +5,7 @@ using Random
 
 global DEFAULT_Δt = 1//100 # default step size for CT systems, must be rational!
 global DEBUG = true
-global DISPLAY_PROGRESS = true
+global DISPLAY_PROGRESS = false
 
 #########################
 #       Utilities       #
@@ -32,7 +32,9 @@ global CONTEXT = Unknown
 
 # initializes the "working copy" of the model that contains the states and outputs over the course of the simulation
 function init_working_copy(model, t0, Δt, uc0, ud0; level = 0)
+    # TODO: add support for StaticArrays and better type inference
     DEBUG && level == 0 ? println("Initializing models at t = ", float(t0)) : nothing
+    DEBUG && level == 0 ? println("Top-level model is ", isCT(model) ? "CT." : (isDT(model) ? "DT." : "hybrid.")) : nothing
 
     sub_tree = (;)
     if hasproperty(model, :models)
@@ -41,14 +43,14 @@ function init_working_copy(model, t0, Δt, uc0, ud0; level = 0)
 
     xc0 = hasproperty(model, :xc0) ? model.xc0 : nothing
     uc0 = uc0 === nothing ? (hasproperty(model, :uc0) ? model.uc0 : nothing) : uc0
-    ycs0 = hasproperty(model, :yc) ? 
+    ycs0 = hasproperty(model, :yc) ?
         (
             length(sub_tree) > 0 ? [model.yc(xc0, uc0, model.p, t0; models = sub_tree),] : [model.yc(xc0, uc0, model.p, t0),]
         ) : nothing
-    
+
     xd0 = hasproperty(model, :xd0) ? model.xd0 : nothing
     ud0 = uc0 === nothing ? (hasproperty(model, :ud0) ? model.ud0 : nothing) : ud0
-    yds0 = hasproperty(model, :yd) ? 
+    yds0 = hasproperty(model, :yd) ?
         (
             length(sub_tree) > 0 ? [model.yd(xd0, ud0, model.p, t0; models = sub_tree),] : [model.yd(xd0, ud0, model.p, t0),]
         ) : nothing
@@ -131,7 +133,7 @@ function loop!(model_working_copy, model, uc, ud, t, Δt_max, T, integrator)
         return false, T
     end
 
-    DEBUG || DISPLAY_PROGRESS ? println("t = ", float(t_next)) : nothing
+    DEBUG && DISPLAY_PROGRESS ? println("t = ", float(t_next)) : nothing
 
     @ct
     if due(model_working_copy, t_next)
@@ -267,6 +269,33 @@ macro out_dt(model)
     end
 end
 
+# Returns the latest state of a model without running it.
+export @state, @state_ct, @state_dt
+macro state(model)
+    quote
+        model_to_call = $(esc(model))
+        if isHybrid(model_to_call)
+            @error "@state is ambiguous for hybrid systems. Please specify using @state_ct or @state_dt."
+        elseif isCT(model_to_call)
+            @state_ct model_to_call
+        elseif isDT(model_to_call)
+            @state_dt model_to_call
+        end
+    end
+end
+
+macro state_ct(model)
+    quote
+        $(esc(model)).xcs[end]
+    end
+end
+
+macro state_dt(model)
+    quote
+        $(esc(model)).xds[end]
+    end
+end
+
 
 ##############################
 #       Model Analysis       #
@@ -343,7 +372,7 @@ function step_rk4(fc, x, u, p, t, Δt, submodel_tree)
     return x + Δt*(k1 + 2*k2 + 2*k3 + k4)/6
 end
 
-# explicit trapezoidal rule / Heun's method 
+# explicit trapezoidal rule / Heun's method
 # https://en.wikipedia.org/wiki/Heun%27s_method
 function step_heun(fc, x, u, p, t, Δt, submodel_tree)
     @safeguard_on
