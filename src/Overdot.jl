@@ -1,6 +1,6 @@
 module Overdot
 
-import Base.push!
+import Base.push!, Base.@inline, Base.gcd
 using Random
 
 global DEFAULT_Δt = 1//100 # default step size for CT systems, must be rational!
@@ -10,9 +10,12 @@ global DISPLAY_PROGRESS = false
 #########################
 #       Utilities       #
 #########################
-Base.@inline maybe_rationalize(x::AbstractFloat)::Rational{Int64}   = rationalize(x)
-Base.@inline maybe_rationalize(x::Rational{Int64})::Rational{Int64} = x
-Base.@inline maybe_rationalize(x)::Rational{Int64}                  = Rational{Int64}(x)
+@inline check_rational(x) = _check_rational(x)
+@inline _check_rational(x::Rational{Int64}) = x
+@inline _check_rational(x::Int) = x
+@inline _check_rational(x::AbstractFloat) = begin; @error "Timesteps and durations should be given as `Rational` to avoid timing errors."; x; end
+@inline _check_rational(x) = oneunit(x) * _check_rational(x.val) # assume it's a Unitful.jl Quantity
+gcd(x, y) = oneunit(x) * Base.gcd(x.val, y.val) # for Unitful.jl Quantities
 
 # @safeguard_on / @safeguard_off are macros for internal use only to protect models from being called
 macro safeguard_on(); :(global MODEL_CALLS_DISABLED = true); end
@@ -62,10 +65,10 @@ function init_working_copy(model, t0, Δt, uc0, ud0; level = 0)
         Δt = hasproperty(model, :Δt) ? model.Δt : Δt,
         # the following store the latest state
         tcs = hasproperty(model, :yc) ? [t0,] : nothing,
-        xcs = hasproperty(model, :fc) ? [xc0,] : nothing,
+        xcs = hasproperty(model, :fc) && xc0 !== nothing ? [xc0,] : nothing,
         ycs = ycs0,
         tds = hasproperty(model, :yd) ? [t0,] : nothing,
-        xds = hasproperty(model, :fd) ? [xd0,] : nothing,
+        xds = hasproperty(model, :fd) && xd0 !== nothing ? [xd0,] : nothing,
         yds = yds0,
         models = sub_tree,
     )
@@ -95,15 +98,15 @@ function simulate(model; T,
         uc = (t) -> nothing,
         ud = (t) -> nothing,
         Δt_max = T,
-        t0 = 0 // 1,
+        t0 = 0 // 1 * oneunit(T),
         seed = 1,
         integrator = RK4
     )
 
     # get supposed step size and end of simulation
-    Δt_max = maybe_rationalize(Δt_max)
-    T = maybe_rationalize(T)
-    t0 = maybe_rationalize(t0)
+    Δt_max = Δt_max === nothing ? oneunit(T) * DEFAULT_Δt : check_rational(Δt_max)
+    T = check_rational(T)
+    t0 = check_rational(t0)
 
     # find smallest time-step
     Δt_max = find_min_Δt(model, Δt_max)
@@ -301,19 +304,19 @@ end
 #       Model Analysis       #
 ##############################
 function isCT(model)
-    return (hasproperty(model, :fc) && !hasproperty(model, :fd)) ||
+    return (hasproperty(model, :fc) && hasproperty(model, :yc)) ||
             (hasproperty(model, :xcs) && hasproperty(model, :xds) && model.xcs !== nothing && model.xds === nothing) ||
             (hasproperty(model, :xcs) && hasproperty(model, :xds) && model.xcs === nothing && model.xds === nothing) # last option is for state-less wrapper-models
 end
 
 function isDT(model)
-    return (hasproperty(model, :fd) && !hasproperty(model, :fc)) ||
+    return (hasproperty(model, :fd) && hasproperty(model, :yc) && hasproperty(model, :Δt) && model.Δt !== nothing) ||
             (hasproperty(model, :xcs) && hasproperty(model, :xds) && model.xds !== nothing && model.xcs === nothing)
 end
 
 function isHybrid(model)
-    return (hasproperty(model, :fd) && hasproperty(model, :fc)) ||
-            (hasproperty(model, :xcs) && hasproperty(model, :xds) && model.xcs !== nothing && model.xds !== nothing)
+    return (hasproperty(model, :fd) && hasproperty(model, :fc) && hasproperty(model, :yd) && hasproperty(model, :yc) && hasproperty(model, :Δt) && model.Δt !== nothing) ||
+            (hasproperty(model, :xcs) && hasproperty(model, :xds) && model.xcs !== nothing && model.xds !== nothing && hasproperty(model, :Δt) && model.Δt !== nothing)
 end
 
 function due(model, t)
@@ -340,8 +343,8 @@ end
 # finds the minimum step size across all models and submodels (recursively)
 function find_min_Δt(model, Δt_prev)
     Δt = Δt_prev
-    if hasproperty(model, :Δt)
-        Δt = gcd(Δt, maybe_rationalize(model.Δt))
+    if hasproperty(model, :Δt) && model.Δt !== nothing
+        Δt = gcd(Δt, check_rational(model.Δt))
     end
 
     if hasproperty(model, :models)
@@ -349,7 +352,7 @@ function find_min_Δt(model, Δt_prev)
             Δt = find_min_Δt(m_i, Δt)
         end
     end
-    return gcd(Δt,maybe_rationalize(DEFAULT_Δt))
+    return gcd(Δt, check_rational(oneunit(Δt) * DEFAULT_Δt))
 end
 
 

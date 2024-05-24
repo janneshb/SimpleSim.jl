@@ -102,7 +102,7 @@ controlled_system = (
 # RUN THE SIM
 #
 r(t) = SVector(0.0, 0.0) # reference
-history = simulate(controlled_system, T = 1.0, uc = r)
+history = simulate(controlled_system, T = 1 // 1, uc = r)
 println()
 
 using Plots

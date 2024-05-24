@@ -24,7 +24,7 @@ pendulum = (
 )
 
 
-T = 30.0
+T = 30 // 1
 u(t) = 0.0
 
 history = simulate(pendulum, T = T, uc = u)

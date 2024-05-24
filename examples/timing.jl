@@ -82,7 +82,7 @@ wrapper = (
     )
 )
 
-history = simulate(wrapper, T = 3.0)
+history = simulate(wrapper, T = 3 // 1)
 
 using Plots
 plot(history.models.inner_hybrid.tcs, history.models.inner_hybrid.ycs, size=(1000, 1000), label="hybrid CT")

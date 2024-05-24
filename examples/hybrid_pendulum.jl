@@ -25,7 +25,7 @@ pendulum_hybrid = (
             -0.837274  0.964158
         ],
     ),
-    Δt = 0.05,
+    Δt = 5 // 100,
     xc0 = x0,
     xd0 = x0,
     fc = fc_pendulum,
@@ -35,7 +35,7 @@ pendulum_hybrid = (
 )
 
 
-T = 30.0
+T = 30 // 1
 
 u(t) = 0.0
 
