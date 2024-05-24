@@ -1,4 +1,4 @@
-using Simulink
+using Overdot
 using StaticArrays
 
 # PLANT
@@ -77,13 +77,14 @@ end
 function yc_controlled_system(x, r, p, t; models)
     # compute error --> input to controller
     # note: e also contains ė
-    e = r - models.inverted_pendulum.ycs[end]
+    y_prev = @out models.inverted_pendulum
+    e = r - y_prev
 
     # call controller
-    u = @call models.controller e
+    u = @call! models.controller e
 
     # call plant
-    y = @call models.inverted_pendulum u
+    y = @call! models.inverted_pendulum u
 
     return y
 end
