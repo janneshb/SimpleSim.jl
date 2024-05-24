@@ -7,10 +7,6 @@ global DEFAULT_Δt = 1//100 # default step size for CT systems, must be rational
 global DEBUG = true
 global DISPLAY_PROGRESS = true
 
-# DO NOT CHANGE THIS ONE
-global MODEL_CALLS_DISABLED = false
-
-
 #########################
 #       Utilities       #
 #########################
@@ -21,6 +17,18 @@ Base.@inline maybe_rationalize(x)::Rational{Int64}                  = Rational{I
 # @safeguard_on / @safeguard_off are macros for internal use only to protect models from being called
 macro safeguard_on(); :(global MODEL_CALLS_DISABLED = true); end
 macro safeguard_off(); :(global MODEL_CALLS_DISABLED = false); end
+
+# @ct / @dt switches the context to CT/DT
+# @context returns the current context
+@enum OverdotContext Unknown=0 CT=1 DT=2
+macro ct(); :(global CONTEXT = CT); end
+macro dt(); :(global CONTEXT = DT); end
+macro call_completed(); :(global CONTEXT = Unknown); end
+macro context(); :(CONTEXT); end
+
+# DO NOT CHANGE THESE GLOBAL VARIABLES
+global MODEL_CALLS_DISABLED = false
+global CONTEXT = Unknown
 
 # initializes the "working copy" of the model that contains the states and outputs over the course of the simulation
 function init_working_copy(model, t0, Δt, uc0, ud0; level = 0)
@@ -116,23 +124,27 @@ function loop!(model_working_copy, model, uc, ud, t, Δt_max, T, integrator)
     end
 
     DEBUG || DISPLAY_PROGRESS ? println("t = ", float(t_next)) : nothing
-    if due(model_working_copy, t_next)
-        # evolve state
-        uc_t_next = uc(t_next)
-        ud_t_next = ud(t_next)
 
-        if isCT(model) || isHybrid(model)
-            xc_prev = model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end]
-            xc_next = step_ct(model.fc, xc_prev, uc_t_next, model.p, t_next, Δt_max, model_working_copy.models, integrator = integrator)
-            yc_next = model.yc(xc_next, uc_t_next, model.p, t_next, models = model_working_copy.models)
-            update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next)
-        elseif isDT(model) || isHybrid(model)
-            xd_prev = model_working_copy.xds === nothing ? nothing : model_working_copy.xds[end]
-            xd_next = step_dt(model.fd, xd_prev, ud_t_next, model.p, t_next, model_working_copy.models)
-            yd_next = model.yd(xd_next, ud_t_next, model.p, t_next, models = model_working_copy.models)
-            update_working_copy_dt!(model_working_copy, t_next, xd_next, yd_next)
-        end
+    @ct
+    if due(model_working_copy, t_next)
+        xc_prev = model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end]
+        uc_t_next = uc(t_next)
+        xc_next = step_ct(model.fc, xc_prev, uc_t_next, model.p, t_next, Δt_max, model_working_copy.models, integrator = integrator)
+        yc_next = model.yc(xc_next, uc_t_next, model.p, t_next, models = model_working_copy.models)
+        @call_completed
+        update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next)
     end
+
+    @dt
+    if due(model_working_copy, t_next)
+        xd_prev = model_working_copy.xds === nothing ? nothing : model_working_copy.xds[end]
+        ud_t_next = ud(t_next)
+        xd_next = step_dt(model.fd, xd_prev, ud_t_next, model.p, t_next, model_working_copy.models)
+        yd_next = model.yd(xd_next, ud_t_next, model.p, t_next, models = model_working_copy.models)
+        @call_completed
+        update_working_copy_dt!(model_working_copy, t_next, xd_next, yd_next)
+    end
+
     return true, t_next
 end
 
@@ -188,6 +200,7 @@ macro call_dt!(model, u)
 end
 
 function model_callable_ct(uc, t, model, model_working_copy, Δt)
+    @ct
     xc_next = model_working_copy.xcs[end]
     submodels = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
 
@@ -197,10 +210,12 @@ function model_callable_ct(uc, t, model, model_working_copy, Δt)
         updated_state = true
     end
     yc_next = model.yc(xc_next, uc, model.p, t; models = submodels)
+    @call_completed
     return (xc_next, yc_next, updated_state)
 end
 
 function model_callable_dt(ud, t, model, model_working_copy)
+    @dt
     xd_next = model_working_copy.xds[end]
     submodels = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
 
@@ -210,6 +225,7 @@ function model_callable_dt(ud, t, model, model_working_copy)
         updated_state = true
     end
     yd_next = model.yd(xd_next, ud, model.p, t; models = submodels)
+    @call_completed
     return (xd_next, yd_next, updated_state)
 end
 
@@ -261,11 +277,22 @@ function isHybrid(model)
 end
 
 function due(model, t)
-    if isCT(model)
+    # TODO: this can be simplified
+    context = @context
+    if isCT(model) && context == CT
         return model.tcs[end] < t # CT models can always be updated if time has progressed
     end
-    if isDT(model)
+    if isDT(model) && context == DT
         return model.tds[end] + model.Δt <= t
+    end
+    if isHybrid(model)
+        if context == CT
+            return model.tcs[end] < t # CT models can always be updated if time has progressed
+        elseif context == DT
+            return model.tds[end] + model.Δt <= t
+        else
+            @error "Could not determine if the model is due to update."
+        end
     end
     return false
 end
