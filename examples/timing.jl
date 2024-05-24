@@ -2,17 +2,27 @@ using Overdot
 using StaticArrays
 
 
-function fc_inner_ct(x, u, p, t; models)
+function fc_inner_hybrid(x, u, p, t; models)
     return 1.0
 end
-yc_inner_ct(x, u, p, t; models) = x
+yc_inner_hybrid(x, u, p, t; models) = x
 
-inner_ct = (
+function fd_inner_hybrid(x, u, p, t; models)
+    return t
+end
+yd_inner_hybrid(x, u, p, t; models) = x
+
+inner_hybrid = (
     p = (),
     xc0 = 0.0,
     uc0 = 0.0,
-    fc = fc_inner_ct,
-    yc = yc_inner_ct,
+    fc = fc_inner_hybrid,
+    yc = yc_inner_hybrid,
+    xd0 = 0.0,
+    ud0 = 0.0,
+    fd = fd_inner_hybrid,
+    yd = yd_inner_hybrid,
+    Δt = 5 // 10,
 )
 
 
@@ -29,7 +39,7 @@ inner_dt2 = (
     ud0 = 0.0,
     fd = fd_inner_dt2,
     yd = yd_inner_dt2,
-    Δt = 1.0,
+    Δt = 1 // 10,
 )
 
 
@@ -47,7 +57,7 @@ inner_dt = (
     ud0 = 0.0,
     fd = fd_inner_dt,
     yd = yd_inner_dt,
-    Δt = 0.3,
+    Δt = 3 // 10,
     models = (
         inner_dt2 = inner_dt2,
     )
@@ -57,8 +67,9 @@ inner_dt = (
 fc_wrapper(x, u, p, t; models) = nothing
 
 function yc_wrapper(x, u, p, t; models)
-    y_ct_inner = @call! models.inner_ct 0.0
-    y_dt_inner = @call! models.inner_dt 0.0
+    y_ct_inner = @call_ct! models.inner_hybrid 0.0
+    y_dt_inner = @call_dt! models.inner_hybrid 0.0
+    y_dt_inner2 = @call! models.inner_dt 0.0
     return 1.0
 end
 wrapper = (
@@ -66,10 +77,15 @@ wrapper = (
     fc = fc_wrapper,
     yc = yc_wrapper,
     models = (
-        inner_ct = inner_ct,
+        inner_hybrid = inner_hybrid,
         inner_dt = inner_dt,
     )
 )
 
 history = simulate(wrapper, T = 3.0)
-println("done.")
+
+using Plots
+plot(history.models.inner_hybrid.tcs, history.models.inner_hybrid.ycs, size=(1000, 1000), label="hybrid CT")
+plot!(history.models.inner_hybrid.tds, history.models.inner_hybrid.yds, seriestype = :steppost, label="hybrid DT")
+plot!(history.models.inner_dt.tds, history.models.inner_dt.yds, seriestype = :steppost, label="DT 1")
+plot!(history.models.inner_dt.models.inner_dt2.tds, history.models.inner_dt.models.inner_dt2.yds, seriestype = :steppost, label="DT 2")
