@@ -200,6 +200,7 @@ macro call_dt!(model, u)
 end
 
 function model_callable_ct(uc, t, model, model_working_copy, Δt)
+    # TODO: print warning when calling a CT system from within a DT system
     @ct
     xc_next = model_working_copy.xcs[end]
     submodels = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
