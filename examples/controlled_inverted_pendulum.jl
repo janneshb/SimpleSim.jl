@@ -102,8 +102,8 @@ controlled_system = (
 # RUN THE SIM
 #
 r(t) = SVector(0.0, 0.0) # reference
-history = simulate(controlled_system, T = 10.0, uc = r)
-println("done.")
+history = simulate(controlled_system, T = 1.0, uc = r)
+println()
 
 using Plots
 plot(history.tcs, getindex.(history.ycs, 1))

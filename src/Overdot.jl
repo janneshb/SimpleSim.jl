@@ -23,11 +23,13 @@ macro safeguard_on(); :(global MODEL_CALLS_DISABLED = true); end
 macro safeguard_off(); :(global MODEL_CALLS_DISABLED = false); end
 
 # initializes the "working copy" of the model that contains the states and outputs over the course of the simulation
-function init_working_copy(model, t0, Δt, uc0, ud0)
+function init_working_copy(model, t0, Δt, uc0, ud0; level = 0)
+    DEBUG && level == 0 ? println("Initializing models at t = ", float(t0)) : nothing
+
     # TODO: maybe we can find a way to omit the models kwarg when reaching the end of the tree
     sub_tree = (;)
     if hasproperty(model, :models)
-        sub_tree = NamedTuple{keys(model.models)}(((init_working_copy(m_i, t0, Δt, nothing, nothing) for m_i in model.models)...,))
+        sub_tree = NamedTuple{keys(model.models)}(((init_working_copy(m_i, t0, Δt, nothing, nothing; level = level + 1) for m_i in model.models)...,))
     end
 
     xc0 = hasproperty(model, :xc0) ? model.xc0 : nothing
@@ -100,6 +102,8 @@ function simulate(model; T,
     while simulation_is_running
         simulation_is_running, t = loop!(model_working_copy, model, uc, ud, t, Δt_max, T, integrator)
     end
+
+    DEBUG && println("Simulation has terminated.")
     return model_working_copy
 end
 
@@ -151,34 +155,34 @@ end
 
 macro call_ct!(model, u)
     quote
-        if MODEL_CALLS_DISABLED
-            @error "@call! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in umambiguous cases)."
-        end
+        MODEL_CALLS_DISABLED && @error "@call! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in umambiguous cases)."
 
         model_to_call = $(esc(model))
-        (xc, yc) = model_to_call.callable_ct(
+        (xc, yc, updated_state) = model_to_call.callable_ct(
             $(esc(u)),
             $(esc(:t)),
             model_to_call,
         )
-        update_working_copy_ct!($(esc(model)), $(esc(:t)), xc, yc)
+        if updated_state
+            update_working_copy_ct!($(esc(model)), $(esc(:t)), xc, yc)
+        end
         yc
     end
 end
 
 macro call_dt!(model, u)
     quote
-        if MODEL_CALLS_DISABLED
-            @error "@call! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in umambiguous cases)."
-        end
+        MODEL_CALLS_DISABLED && @error "@call! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in umambiguous cases)."
 
         model_to_call = $(esc(model))
-        (xd, yd) = model_to_call.callable_dt(
+        (xd, yd, updated_state) = model_to_call.callable_dt(
             $(esc(u)),
             $(esc(:t)),
             model_to_call
         )
-        update_working_copy_dt!($(esc(model)), $(esc(:t)), xd, yd)
+        if updated_state
+            update_working_copy_dt!($(esc(model)), $(esc(:t)), xd, yd)
+        end
         yd
     end
 end
@@ -187,22 +191,26 @@ function model_callable_ct(uc, t, model, model_working_copy, Δt)
     xc_next = model_working_copy.xcs[end]
     submodels = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
 
+    updated_state = false
     if due(model_working_copy, t)
         xc_next = step_ct(model.fc, model_working_copy.xcs[end], uc, model.p, t, Δt, submodels)
+        updated_state = true
     end
     yc_next = model.yc(xc_next, uc, model.p, t; models = submodels)
-    return (xc_next, yc_next)
+    return (xc_next, yc_next, updated_state)
 end
 
-function model_callable_dt(ud, t, mdoel, model_working_copy)
+function model_callable_dt(ud, t, model, model_working_copy)
     xd_next = model_working_copy.xds[end]
     submodels = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
 
+    updated_state = false
     if due(model_working_copy, t)
         xd_next = step_dt(model.fd, model_working_copy.xds[end], ud, model.p, t, submodels)
+        updated_state = true
     end
-    yd_next = model.yd(xd_next, ud, mdoel.p, t; models = submodels)
-    return (xd_next, yd_next)
+    yd_next = model.yd(xd_next, ud, model.p, t; models = submodels)
+    return (xd_next, yd_next, updated_state)
 end
 
 # Returns the latest output of a model without running it. For use within fc and fd.

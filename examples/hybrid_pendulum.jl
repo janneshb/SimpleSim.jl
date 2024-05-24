@@ -1,13 +1,18 @@
-using Simulink
+using Overdot
 using StaticArrays
 
 # dynamic rule for the damped pendulum
-fc_pendulum(x, u, p, t) = SVector(x[2], -p.λ*x[2] - p.ω2*sin(x[1]))
-fd_pendulum(x, u, p, t) = p.A * x
+fc_pendulum(x, u, p, t; models) = SVector(x[2], -p.λ*x[2] - p.ω2*sin(x[1]))
+fd_pendulum(x, u, p, t; models) = p.A * x
 
 # measurement model
-yc_pendulum(x, u, p, t) = x
-yd_pendulum(x, u, p, t) = x
+yc_pendulum(x, u, p, t; models) = x
+yd_pendulum(x, u, p, t; models) = x
+
+x0 = [
+    30.0 *π/180.0,   #*s/s,
+    0.0              #*1/s
+]
 
 pendulum_hybrid = (
     p = (
@@ -20,6 +25,9 @@ pendulum_hybrid = (
             -0.837274  0.964158
         ],
     ),
+    Δt = 0.05,
+    xc0 = x0,
+    xd0 = x0,
     fc = fc_pendulum,
     fd = fd_pendulum,
     yc = yc_pendulum,
@@ -28,14 +36,10 @@ pendulum_hybrid = (
 
 
 T = 30.0
-Δt = 0.05
-x0 = [
-    30.0 *π/180.0,   #*s/s,
-    0.0              #*1/s
-]
+
 u(t) = 0.0
 
-Y, t = simulate(pendulum_hybrid, T = T, Δt = Δt, x0 = x0, u = u)
+history = simulate(pendulum_hybrid, T = T, uc = u, ud = u)
 
-#using Plots
-#plot(t, Y[1, :], seriestype = :steppost)
+using Plots
+plot(history.tcs, getindex.(history.ycs, 1))
