@@ -40,20 +40,20 @@ function init_working_copy(model, t0, Δt, uc0, ud0; level = 0)
     DEBUG && level == 0 ? println("Top-level model is ", isCT(model) ? "CT." : (isDT(model) ? "DT." : "hybrid.")) : nothing
 
     sub_tree = (;)
-    if hasproperty(model, :models)
+    if hasproperty(model, :models) && model.models !== nothing
         sub_tree = NamedTuple{keys(model.models)}(((init_working_copy(m_i, t0, Δt, nothing, nothing; level = level + 1) for m_i in model.models)...,))
     end
 
-    xc0 = hasproperty(model, :xc0) ? model.xc0 : nothing
-    uc0 = uc0 === nothing ? (hasproperty(model, :uc0) ? model.uc0 : nothing) : uc0
-    ycs0 = hasproperty(model, :yc) ?
+    xc0 = hasproperty(model, :xc0) && model.xc0 !== nothing ? model.xc0 : nothing
+    uc0 = uc0 === nothing ? (hasproperty(model, :uc0) && model.uc0 !== nothing ? model.uc0 : nothing) : uc0
+    ycs0 = hasproperty(model, :yc) && model.yc !== nothing ?
         (
             length(sub_tree) > 0 ? [model.yc(xc0, uc0, model.p, t0; models = sub_tree),] : [model.yc(xc0, uc0, model.p, t0),]
         ) : nothing
 
-    xd0 = hasproperty(model, :xd0) ? model.xd0 : nothing
-    ud0 = uc0 === nothing ? (hasproperty(model, :ud0) ? model.ud0 : nothing) : ud0
-    yds0 = hasproperty(model, :yd) ?
+    xd0 = hasproperty(model, :xd0) && model.xd0 !== nothing ? model.xd0 : nothing
+    ud0 = uc0 === nothing ? (hasproperty(model, :ud0) && model.ud0 !== nothing ? model.ud0 : nothing) : ud0
+    yds0 = hasproperty(model, :yd) && model.yd !== nothing ?
         (
             length(sub_tree) > 0 ? [model.yd(xd0, ud0, model.p, t0; models = sub_tree),] : [model.yd(xd0, ud0, model.p, t0),]
         ) : nothing
@@ -62,13 +62,13 @@ function init_working_copy(model, t0, Δt, uc0, ud0; level = 0)
         # callable = model_callable,
         callable_ct = (u, t, model_working_copy) -> model_callable_ct(u, t, model, model_working_copy, Δt),
         callable_dt = (u, t, model_working_copy) -> model_callable_dt(u, t, model, model_working_copy),
-        Δt = hasproperty(model, :Δt) ? model.Δt : Δt,
+        Δt = hasproperty(model, :Δt) && model.Δt !== nothing ? model.Δt : Δt,
         # the following store the latest state
-        tcs = hasproperty(model, :yc) ? [t0,] : nothing,
-        xcs = hasproperty(model, :fc) && xc0 !== nothing ? [xc0,] : nothing,
+        tcs = hasproperty(model, :yc) && model.yc !== nothing ? [t0,] : nothing,
+        xcs = hasproperty(model, :fc) && model.fc !== nothing &&xc0 !== nothing ? [xc0,] : nothing,
         ycs = ycs0,
-        tds = hasproperty(model, :yd) ? [t0,] : nothing,
-        xds = hasproperty(model, :fd) && xd0 !== nothing ? [xd0,] : nothing,
+        tds = hasproperty(model, :yd) && model.yd !== nothing  ? [t0,] : nothing,
+        xds = hasproperty(model, :fd) && model.fd !== nothing && xd0 !== nothing ? [xd0,] : nothing,
         yds = yds0,
         models = sub_tree,
     )
@@ -304,18 +304,19 @@ end
 #       Model Analysis       #
 ##############################
 function isCT(model)
-    return (hasproperty(model, :fc) && hasproperty(model, :yc)) ||
+    return (hasproperty(model, :fc) && hasproperty(model, :yc) && model.fc !== nothing && model.yc !== nothing) ||
             (hasproperty(model, :xcs) && hasproperty(model, :xds) && model.xcs !== nothing && model.xds === nothing) ||
             (hasproperty(model, :xcs) && hasproperty(model, :xds) && model.xcs === nothing && model.xds === nothing) # last option is for state-less wrapper-models
 end
 
 function isDT(model)
-    return (hasproperty(model, :fd) && hasproperty(model, :yc) && hasproperty(model, :Δt) && model.Δt !== nothing) ||
+    return (hasproperty(model, :fd) && hasproperty(model, :yd) && hasproperty(model, :Δt) && model.fd !== nothing && model.yd !== nothing && model.Δt !== nothing) ||
             (hasproperty(model, :xcs) && hasproperty(model, :xds) && model.xds !== nothing && model.xcs === nothing)
 end
 
 function isHybrid(model)
-    return (hasproperty(model, :fd) && hasproperty(model, :fc) && hasproperty(model, :yd) && hasproperty(model, :yc) && hasproperty(model, :Δt) && model.Δt !== nothing) ||
+    return ((hasproperty(model, :fd) && hasproperty(model, :fc) && hasproperty(model, :yd) && hasproperty(model, :yc) && hasproperty(model, :Δt)) &&
+            (model.fd !== nothing && model.fc !== nothing && model.yd !== nothing && model.yc !== nothing && model.Δt !== nothing)) ||
             (hasproperty(model, :xcs) && hasproperty(model, :xds) && model.xcs !== nothing && model.xds !== nothing && hasproperty(model, :Δt) && model.Δt !== nothing)
 end
 
@@ -347,7 +348,7 @@ function find_min_Δt(model, Δt_prev)
         Δt = gcd(Δt, check_rational(model.Δt))
     end
 
-    if hasproperty(model, :models)
+    if hasproperty(model, :models) && model.models !== nothing
         for m_i in model.models
             Δt = find_min_Δt(m_i, Δt)
         end
