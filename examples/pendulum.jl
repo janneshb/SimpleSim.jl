@@ -1,4 +1,4 @@
-using Overdot
+using SimpleSim
 using StaticArrays
 
 # dynamic rule for the damped pendulum

@@ -1,4 +1,4 @@
-# Overdot.jl
+# SimpleSim.jl
 
 ## Supported Hooks
 

@@ -1,4 +1,4 @@
-module Overdot
+module SimpleSim
 
 import Base.push!, Base.@inline, Base.gcd
 using Random
@@ -23,7 +23,7 @@ macro safeguard_off(); :(global MODEL_CALLS_DISABLED = false); end
 
 # @ct / @dt switches the context to CT/DT
 # @context returns the current context
-@enum OverdotContext Unknown=0 CT=1 DT=2
+@enum SimpleSimContext Unknown=0 CT=1 DT=2
 macro ct(); :(global CONTEXT = CT); end
 macro dt(); :(global CONTEXT = DT); end
 macro call_completed(); :(global CONTEXT = Unknown); end
@@ -359,8 +359,8 @@ end
 ###########################
 #       Integrators       #
 ###########################
-export OverdotIntegrator, RK4, Euler, Heun
-@enum OverdotIntegrator RK4=1 Euler=2 Heun=3
+export SimpleSimIntegrator, RK4, Euler, Heun
+@enum SimpleSimIntegrator RK4=1 Euler=2 Heun=3
 
 # Fourth-order Runge-Kutta method
 # https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods
@@ -419,4 +419,4 @@ function step_dt(fd, x, u, p, t, submodel_tree)
     return length(submodel_tree) > 0 ? fd(x, u, p, t, models = submodel_tree) : fd(x, u, p, t)
 end
 
-end # module Overdot
+end # module SimpleSim
