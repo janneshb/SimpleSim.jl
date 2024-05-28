@@ -31,4 +31,4 @@ u(t) = 0.0
 history = simulate(pendulum_discrete, T = T, ud = u)
 
 using Plots
-plot(history.tds, getindex.(history.yds, 1), seriestype = :steppost)
+plot(history.tds, history.yds[:, 1], seriestype = :steppost)

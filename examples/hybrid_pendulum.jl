@@ -42,4 +42,4 @@ u(t) = 0.0
 history = simulate(pendulum_hybrid, T = T, uc = u, ud = u)
 
 using Plots
-plot(history.tcs, getindex.(history.ycs, 1))
+plot(history.tcs, history.ycs[:, 1])

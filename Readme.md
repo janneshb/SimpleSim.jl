@@ -2,8 +2,10 @@
 
 ## TODO
 
-- [ ] Check support for vector submodels
+- [x] Make sure the data is output as matrices and not a vector of vectors
+- [x] Check support for vector submodels
 - [ ] Write Julia tests
+
 
 ## Supported Hooks
 

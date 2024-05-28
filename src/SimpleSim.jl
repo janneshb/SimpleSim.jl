@@ -5,7 +5,7 @@ using Random
 
 global DEFAULT_Δt = 14//100 # default step size for CT systems, must be rational!
 global DEBUG = true
-global DISPLAY_PROGRESS = true
+global DISPLAY_PROGRESS = false
 global PROGRESS_SPACING = 1 // 1 # in the same unit as total time T
 
 #########################
@@ -100,6 +100,31 @@ function update_working_copy_dt!(model_working_copy, t, xd, yd)
     yd !== nothing ? push!(model_working_copy.yds, yd) : nothing
 end
 
+# reduce output and cast time series into matrix form
+function post_process(out)
+    function post_process_submodels(models::NamedTuple)
+        return NamedTuple{keys(models)}(((post_process(m_i) for m_i in models)...,))
+    end
+
+    function post_process_submodels(models::Tuple)
+        return ((post_process(m_i) for m_i in models)...,)
+    end
+
+    function post_process_submodels(models::Vector)
+        return [post_process(m_i) for m_i in models]
+    end
+
+    return (
+        Δt = hasproperty(out, :Δt) && out.Δt !== nothing ? out.Δt : Δt,
+        tcs = out.tcs,
+        xcs = out.xcs !== nothing ? hcat(out.xcs...)' : out.xcs,
+        ycs = out.ycs !== nothing ? hcat(out.ycs...)' : out.ycs,
+        tds = out.tds,
+        xds = out.xds !== nothing ? hcat(out.xds...)' : out.xds,
+        yds = out.yds !== nothing ? hcat(out.yds...)' : out.yds,
+        models = post_process_submodels(out.models),
+    )
+end
 
 ####################
 #       Core       #
@@ -138,7 +163,7 @@ function simulate(model; T,
     end
 
     DEBUG && println("Simulation has terminated.")
-    return model_working_copy
+    return post_process(model_working_copy)
 end
 
 # the main simulation loop
@@ -345,6 +370,7 @@ function due(model, t)
         return model.tds[end] + model.Δt <= t
     end
     if isHybrid(model)
+        # TODO: this might not work as supposed to
         if context == CT
             return model.tcs[end] < t # CT models can always be updated if time has progressed
         elseif context == DT

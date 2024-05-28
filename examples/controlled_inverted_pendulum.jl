@@ -106,4 +106,4 @@ history = simulate(controlled_system, T = 1 // 1, uc = r)
 println()
 
 using Plots
-plot(history.tcs, getindex.(history.ycs, 1))
+plot(history.tcs, history.ycs[:, 1])
