@@ -3,9 +3,10 @@ module SimpleSim
 import Base.push!, Base.@inline, Base.gcd
 using Random
 
-global DEFAULT_Δt = 1//100 # default step size for CT systems, must be rational!
+global DEFAULT_Δt = 14//100 # default step size for CT systems, must be rational!
 global DEBUG = true
-global DISPLAY_PROGRESS = false
+global DISPLAY_PROGRESS = true
+global PROGRESS_SPACING = 1 // 1
 
 #########################
 #       Utilities       #
@@ -110,6 +111,7 @@ function simulate(model; T,
 
     # find smallest time-step
     Δt_max = find_min_Δt(model, Δt_max)
+    DEBUG && println("Using Δt = $Δt_max for continuous-time models.")
 
     # initialize random number generator
     rng = Xoshiro(seed) # TODO: implement random draw hook (or macro?)
@@ -136,7 +138,9 @@ function loop!(model_working_copy, model, uc, ud, t, Δt_max, T, integrator)
         return false, T
     end
 
-    DEBUG && DISPLAY_PROGRESS ? println("t = ", float(t_next)) : nothing
+    DEBUG && DISPLAY_PROGRESS  &&
+        div(t_next, PROGRESS_SPACING * oneunit(t_next)) != div(t_next - Δt_max, PROGRESS_SPACING * oneunit(t_next)) ?
+        println("t = ", float(t_next)) : nothing
 
     @ct
     if due(model_working_copy, t_next)

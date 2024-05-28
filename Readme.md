@@ -2,6 +2,7 @@
 
 ## TODO
 
+- [ ] Check support for vector submodels
 - [ ] Write Julia tests
 
 ## Supported Hooks
