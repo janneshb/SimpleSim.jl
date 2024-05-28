@@ -6,7 +6,7 @@ using Random
 global DEFAULT_Δt = 14//100 # default step size for CT systems, must be rational!
 global DEBUG = true
 global DISPLAY_PROGRESS = true
-global PROGRESS_SPACING = 1 // 1
+global PROGRESS_SPACING = 1 // 1 # in the same unit as total time T
 
 #########################
 #       Utilities       #
@@ -36,13 +36,24 @@ global CONTEXT = Unknown
 
 # initializes the "working copy" of the model that contains the states and outputs over the course of the simulation
 function init_working_copy(model, t0, Δt, uc0, ud0; level = 0)
+    function build_sub_tree(models::NamedTuple)
+        return NamedTuple{keys(models)}(((init_working_copy(m_i, t0, Δt, nothing, nothing; level = level + 1) for m_i in models)...,))
+    end
+
+    function build_sub_tree(models::Tuple)
+        return ((init_working_copy(m_i, t0, Δt, nothing, nothing; level = level + 1) for m_i in models)...,)
+    end
+
+    function build_sub_tree(models::Vector)
+        return [init_working_copy(m_i, t0, Δt, nothing, nothing; level = level + 1) for m_i in models]
+    end
+
     # TODO: add support for StaticArrays and better type inference
     DEBUG && level == 0 ? println("Initializing models at t = ", float(t0)) : nothing
     DEBUG && level == 0 ? println("Top-level model is ", isCT(model) ? "CT." : (isDT(model) ? "DT." : "hybrid.")) : nothing
-
     sub_tree = (;)
     if hasproperty(model, :models) && model.models !== nothing
-        sub_tree = NamedTuple{keys(model.models)}(((init_working_copy(m_i, t0, Δt, nothing, nothing; level = level + 1) for m_i in model.models)...,))
+        sub_tree = build_sub_tree(model.models)
     end
 
     xc0 = hasproperty(model, :xc0) && model.xc0 !== nothing ? model.xc0 : nothing
@@ -139,7 +150,7 @@ function loop!(model_working_copy, model, uc, ud, t, Δt_max, T, integrator)
     end
 
     DEBUG && DISPLAY_PROGRESS  &&
-        div(t_next, PROGRESS_SPACING * oneunit(t_next)) != div(t_next - Δt_max, PROGRESS_SPACING * oneunit(t_next)) ?
+        div(t_next, PROGRESS_SPACING * oneunit(Δt_max)) != div(t_next - Δt_max, PROGRESS_SPACING * oneunit(Δt_max)) ?
         println("t = ", float(t_next)) : nothing
 
     @ct
