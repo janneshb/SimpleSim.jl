@@ -117,11 +117,11 @@ function post_process(out)
     return (
         Δt = hasproperty(out, :Δt) && out.Δt !== nothing ? out.Δt : Δt,
         tcs = out.tcs,
-        xcs = out.xcs !== nothing ? hcat(out.xcs...)' : out.xcs,
-        ycs = out.ycs !== nothing ? hcat(out.ycs...)' : out.ycs,
+        xcs = out.xcs !== nothing ? reduce(vcat, transpose.(out.xcs)) : out.xcs,
+        ycs = out.ycs !== nothing ? reduce(vcat, transpose.(out.ycs)) : out.ycs,
         tds = out.tds,
-        xds = out.xds !== nothing ? hcat(out.xds...)' : out.xds,
-        yds = out.yds !== nothing ? hcat(out.yds...)' : out.yds,
+        xds = out.xds !== nothing ? reduce(vcat, transpose.(out.xds)) : out.xds,
+        yds = out.yds !== nothing ? reduce(vcat, transpose.(out.yds)) : out.yds,
         models = post_process_submodels(out.models),
     )
 end
@@ -163,7 +163,10 @@ function simulate(model; T,
     end
 
     DEBUG && println("Simulation has terminated.")
-    return post_process(model_working_copy)
+    DEBUG && println("Processing data...")
+    out = post_process(model_working_copy)
+    DEBUG && println("Done!")
+    return out
 end
 
 # the main simulation loop
