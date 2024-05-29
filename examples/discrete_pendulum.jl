@@ -1,7 +1,7 @@
 using SimpleSim
 using StaticArrays
 
-show_plots = true
+show_plots = false
 
 # dynamic rule for the damped pendulum
 fd_pendulum(x, u, p, t) = p.A * x
