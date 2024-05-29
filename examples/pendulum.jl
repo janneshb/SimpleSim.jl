@@ -1,6 +1,8 @@
 using SimpleSim
 using StaticArrays
 
+show_plots = false
+
 # dynamic rule for the damped pendulum
 fc_pendulum(x, u, p, t) = SVector(x[2], -p.λ*x[2] - p.ω2*sin(x[1]))
 
@@ -29,5 +31,7 @@ u(t) = 0.0
 
 history = simulate(pendulum, T = T, uc = u)
 
-using Plots
-plot(history.tcs, history.ycs[:, 1])
+if show_plots
+    using Plots
+    plot(history.tcs, history.ycs[:, 1])
+end

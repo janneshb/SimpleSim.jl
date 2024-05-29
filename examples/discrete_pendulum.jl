@@ -1,6 +1,8 @@
 using SimpleSim
 using StaticArrays
 
+show_plots = true
+
 # dynamic rule for the damped pendulum
 fd_pendulum(x, u, p, t) = p.A * x
 
@@ -30,5 +32,7 @@ T = 10 // 1
 u(t) = 0.0
 history = simulate(pendulum_discrete, T = T, ud = u)
 
-using Plots
-plot(history.tds, history.yds[:, 1], seriestype = :steppost)
+if show_plots
+    using Plots
+    plot(history.tds, history.yds[:, 1], seriestype = :steppost)
+end

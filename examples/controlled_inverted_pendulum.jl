@@ -1,6 +1,8 @@
 using SimpleSim
 using StaticArrays
 
+show_plots = false
+
 # PLANT
 #
 function fc_inv_pendulum(x, u, p, t)
@@ -105,5 +107,7 @@ r(t) = SVector(0.0, 0.0) # reference
 history = simulate(controlled_system, T = 1 // 1, uc = r)
 println()
 
-using Plots
-plot(history.tcs, history.ycs[:, 1])
+if show_plots
+    using Plots
+    plot(history.tcs, history.ycs[:, 1])
+end

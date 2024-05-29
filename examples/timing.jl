@@ -1,6 +1,7 @@
 using SimpleSim
 using StaticArrays
 
+show_plots = false
 
 function fc_inner_hybrid(x, u, p, t)
     return 1.0
@@ -84,8 +85,10 @@ wrapper = (
 
 history = simulate(wrapper, T = 3 // 1)
 
-using Plots
-plot(history.models.inner_hybrid.tcs, history.models.inner_hybrid.ycs, size=(1000, 1000), label="hybrid CT")
-plot!(history.models.inner_hybrid.tds, history.models.inner_hybrid.yds, seriestype = :steppost, label="hybrid DT")
-plot!(history.models.inner_dt.tds, history.models.inner_dt.yds, seriestype = :steppost, label="DT 1")
-plot!(history.models.inner_dt.models.inner_dt2.tds, history.models.inner_dt.models.inner_dt2.yds, seriestype = :steppost, label="DT 2")
+if show_plots
+    using Plots
+    plot(history.models.inner_hybrid.tcs, history.models.inner_hybrid.ycs, size=(1000, 1000), label="hybrid CT")
+    plot!(history.models.inner_hybrid.tds, history.models.inner_hybrid.yds, seriestype = :steppost, label="hybrid DT")
+    plot!(history.models.inner_dt.tds, history.models.inner_dt.yds, seriestype = :steppost, label="DT 1")
+    plot!(history.models.inner_dt.models.inner_dt2.tds, history.models.inner_dt.models.inner_dt2.yds, seriestype = :steppost, label="DT 2")
+end
