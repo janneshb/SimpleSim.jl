@@ -4,8 +4,8 @@
 
 - [x] Make sure the data is output as matrices and not a vector of vectors
 - [x] Check support for vector submodels
-- [ ] Write Julia tests
-
+- [ ] Write (proper) Julia tests
+- [ ] Implement random draw hook that is invariant to model structure
 
 ## Supported Hooks
 

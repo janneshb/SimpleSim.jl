@@ -497,7 +497,7 @@ function due(model, t)
         return model.tds[end] + model.Δt <= t
     end
     if isHybrid(model)
-        # TODO: this might not work as supposed to
+        # TODO: this might not work as it's supposed to
         if context == CT
             return model.tcs[end] < t # CT models can always be updated if time has progressed
         elseif context == DT
