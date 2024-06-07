@@ -6,6 +6,8 @@
 - [x] Check support for vector submodels
 - [ ] Write (proper) Julia tests
 - [ ] Implement random draw hook that is invariant to model structure
+- [ ] Make public
+
 
 ## Supported Hooks
 
