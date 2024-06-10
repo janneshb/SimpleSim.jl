@@ -161,11 +161,11 @@ function post_process(out)
     return (
         Δt = hasproperty(out, :Δt) && out.Δt !== nothing ? out.Δt : Δt,
         tcs = out.tcs,
-        xcs = out.xcs !== nothing ? reduce(vcat, transpose.(out.xcs)) : out.xcs,
-        ycs = out.ycs !== nothing ? reduce(vcat, transpose.(out.ycs)) : out.ycs,
+        xcs = out.xcs !== nothing ? reduce(vcat, transpose.(out.xcs)) : nothing,
+        ycs = out.ycs !== nothing ? reduce(vcat, transpose.(out.ycs)) : nothing,
         tds = out.tds,
-        xds = out.xds !== nothing ? reduce(vcat, transpose.(out.xds)) : out.xds,
-        yds = out.yds !== nothing ? reduce(vcat, transpose.(out.yds)) : out.yds,
+        xds = out.xds !== nothing ? reduce(vcat, transpose.(out.xds)) : nothing,
+        yds = out.yds !== nothing ? reduce(vcat, transpose.(out.yds)) : nothing,
         models = post_process_submodels(out.models),
     )
 end
