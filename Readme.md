@@ -20,7 +20,9 @@ Multiple demos in the `exanmples/` provide a rough but incomplete overview of wh
 
 ## Credit
 
-A similar simulation architecture was proposed by @tuckermcclure in [overdot-sandbox](https://github.com/tuckermcclure/overdot-sandbox).
+
+
+A similar simulation architecture was proposed by [@tuckermcclure](https://www.github.com/tuckermcclure) in [overdot-sandbox](https://github.com/tuckermcclure/overdot-sandbox).
 
 ## Supported Hooks
 
