@@ -11,7 +11,7 @@ function fc_inv_pendulum(x, u, p, t)
     g = p.g
     m = p.m
     l = p.l
-    l2 = l*l
+    l2 = l * l
 
     dz = x[2]
     θ = x[3]
@@ -25,25 +25,16 @@ function fc_inv_pendulum(x, u, p, t)
     # | l*ddθ - g*sin(θ) = ddz*cos(θ)
     #
 
-    ddz = (u/m - g*s_θ*c_θ - l2*dθ*dθ*s_θ)/(1 + c_θ*c_θ)
-    ddθ = (ddz*c_θ + g*s_θ) / l
+    ddz = (u / m - g * s_θ * c_θ - l2 * dθ * dθ * s_θ) / (1 + c_θ * c_θ)
+    ddθ = (ddz * c_θ + g * s_θ) / l
     return SVector(dz, ddz, dθ, ddθ)
 end
 
 yc_inv_pendulum(x, u, p, t) = SVector(x[3], x[4])
 
 inverted_pendulum = (
-    p = (
-        g = 9.81,
-        l = 0.5,
-        m = 0.3,
-    ),
-    xc0 = SVector(
-        0.0,
-        0.0,
-        deg2rad(15.0),
-        0.0
-    ),
+    p = (g = 9.81, l = 0.5, m = 0.3),
+    xc0 = SVector(0.0, 0.0, deg2rad(15.0), 0.0),
     uc0 = 0.0,
     fc = fc_inv_pendulum,
     yc = yc_inv_pendulum,
@@ -56,14 +47,11 @@ function fc_controls(x, e, p, t)
 end
 
 function yc_controls(x, u, p, t)
-    return p.k_p*x[1] + p.k_i*x[2]
+    return p.k_p * x[1] + p.k_i * x[2]
 end
 
 controller = (
-    p = (
-        k_p = 1.0,
-        k_i = 0.1,
-    ),
+    p = (k_p = 1.0, k_i = 0.1),
     xc0 = SVector(zeros(2)...),
     uc0 = SVector(zeros(2)...),
     fc = fc_controls,
@@ -95,10 +83,7 @@ controlled_system = (
     fc = fc_controlled_system,
     yc = yc_controlled_system,
     p = (),
-    models = (
-        inverted_pendulum = inverted_pendulum,
-        controller = controller,
-    )
+    models = (inverted_pendulum = inverted_pendulum, controller = controller),
 )
 
 # RUN THE SIM

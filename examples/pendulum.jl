@@ -4,20 +4,20 @@ using StaticArrays
 show_plots = false
 
 # dynamic rule for the damped pendulum
-fc_pendulum(x, u, p, t) = SVector(x[2], -p.λ*x[2] - p.ω2*sin(x[1]))
+fc_pendulum(x, u, p, t) = SVector(x[2], -p.λ * x[2] - p.ω2 * sin(x[1]))
 
 # measurement model
 yc_pendulum(x, u, p, t) = x
 
 x0 = [
-    30.0 *π/180.0,   #*s/s,
-    0.0              #*1/s
+    30.0 * π / 180.0,   #*s/s,
+    0.0,              #*1/s
 ]
 pendulum = (
     p = (
         g = 9.81,
         L = 0.5,
-        ω2 = 9.81/0.5, # equals g/L
+        ω2 = 9.81 / 0.5, # equals g/L
         λ = 0.3,
     ),
     xc0 = x0,

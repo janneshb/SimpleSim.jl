@@ -34,14 +34,8 @@ end
 function yd_inner_dt2(x, u, p, t)
     return x
 end
-inner_dt2 = (
-    p = (),
-    xd0 = 0.0,
-    ud0 = 0.0,
-    fd = fd_inner_dt2,
-    yd = yd_inner_dt2,
-    Δt = 1 // 10,
-)
+inner_dt2 =
+    (p = (), xd0 = 0.0, ud0 = 0.0, fd = fd_inner_dt2, yd = yd_inner_dt2, Δt = 1 // 10)
 
 
 function fd_inner_dt(x, u, p, t; models)
@@ -59,9 +53,7 @@ inner_dt = (
     fd = fd_inner_dt,
     yd = yd_inner_dt,
     Δt = 3 // 10,
-    models = (
-        inner_dt2 = inner_dt2,
-    )
+    models = (inner_dt2 = inner_dt2,),
 )
 
 
@@ -77,18 +69,35 @@ wrapper = (
     p = (),
     fc = fc_wrapper,
     yc = yc_wrapper,
-    models = (
-        inner_hybrid = inner_hybrid,
-        inner_dt = inner_dt,
-    )
+    models = (inner_hybrid = inner_hybrid, inner_dt = inner_dt),
 )
 
 history = simulate(wrapper, T = 3 // 1)
 
 if show_plots
     using Plots
-    plot(history.models.inner_hybrid.tcs, history.models.inner_hybrid.ycs, size=(1000, 1000), label="hybrid CT")
-    plot!(history.models.inner_hybrid.tds, history.models.inner_hybrid.yds, seriestype = :steppost, label="hybrid DT")
-    plot!(history.models.inner_dt.tds, history.models.inner_dt.yds, seriestype = :steppost, label="DT 1")
-    plot!(history.models.inner_dt.models.inner_dt2.tds, history.models.inner_dt.models.inner_dt2.yds, seriestype = :steppost, label="DT 2")
+    plot(
+        history.models.inner_hybrid.tcs,
+        history.models.inner_hybrid.ycs,
+        size = (1000, 1000),
+        label = "hybrid CT",
+    )
+    plot!(
+        history.models.inner_hybrid.tds,
+        history.models.inner_hybrid.yds,
+        seriestype = :steppost,
+        label = "hybrid DT",
+    )
+    plot!(
+        history.models.inner_dt.tds,
+        history.models.inner_dt.yds,
+        seriestype = :steppost,
+        label = "DT 1",
+    )
+    plot!(
+        history.models.inner_dt.models.inner_dt2.tds,
+        history.models.inner_dt.models.inner_dt2.yds,
+        seriestype = :steppost,
+        label = "DT 2",
+    )
 end
