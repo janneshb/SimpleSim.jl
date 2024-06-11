@@ -30,3 +30,4 @@ Manifest.toml
 # other
 format.sh
 test.sh
+doc.sh

@@ -9,6 +9,19 @@
 - [ ] Make public
 
 
+<b>SimpleSim.jl</b> is a light-weight simulation package for dynamical systems simulation, controller synthesis and testing and robotics.
+
+Run `import Pkg; Pkg.add("SimpleSim")` from within your Julia environment to install `SimpleSim.jl`.
+
+## Examples
+
+Multiple demos in the `exanmples/` provide a rough but incomplete overview of what `SimpleSim.jl` can do.
+
+
+## Credit
+
+A similar simulation architecture was proposed by @tuckermcclure in [overdot-sandbox](https://github.com/tuckermcclure/overdot-sandbox).
+
 ## Supported Hooks
 
 ```
