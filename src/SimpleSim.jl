@@ -1,9 +1,8 @@
 module SimpleSim
 
 import Base.push!, Base.@inline, Base.gcd
-using Random
 
-global DEFAULT_Δt = 14 // 100 # default step size for CT systems, must be rational!
+global DEFAULT_Δt = 1 // 100 # default step size for CT systems, must be rational!
 global DEBUG = true
 global DISPLAY_PROGRESS = false
 global PROGRESS_SPACING = 1 // 1 # in the same unit as total time T
@@ -50,7 +49,7 @@ global MODEL_CALLS_DISABLED = false
 global CONTEXT = Unknown
 
 # initializes the "working copy" of the model that contains the states and outputs over the course of the simulation
-function init_working_copy(model, t0, Δt, uc0, ud0; level = 0)
+function init_working_copy(model, t0, Δt, uc0, ud0; xc0 = nothing, xd0 = nothing, level = 0)
     function build_sub_tree(models::NamedTuple)
         return NamedTuple{keys(models)}((
             (
@@ -88,7 +87,9 @@ function init_working_copy(model, t0, Δt, uc0, ud0; level = 0)
         sub_tree = build_sub_tree(model.models)
     end
 
-    xc0 = hasproperty(model, :xc0) && model.xc0 !== nothing ? model.xc0 : nothing
+    xc0 =
+        hasproperty(model, :xc0) && model.xc0 !== nothing ?
+        (xc0 === nothing ? model.xc0 : xc0) : nothing
     uc0 =
         uc0 === nothing ?
         (hasproperty(model, :uc0) && model.uc0 !== nothing ? model.uc0 : nothing) : uc0
@@ -99,7 +100,9 @@ function init_working_copy(model, t0, Δt, uc0, ud0; level = 0)
             [model.yc(xc0, uc0, model.p, t0)]
         ) : nothing
 
-    xd0 = hasproperty(model, :xd0) && model.xd0 !== nothing ? model.xd0 : nothing
+    xd0 =
+        hasproperty(model, :xd0) && model.xd0 !== nothing ?
+        (xd0 === nothing ? model.xd0 : xd0) : nothing
     ud0 =
         uc0 === nothing ?
         (hasproperty(model, :ud0) && model.ud0 !== nothing ? model.ud0 : nothing) : ud0
@@ -182,6 +185,9 @@ function simulate(
     ud = (t) -> nothing,
     Δt_max = T,
     t0 = 0 // 1 * oneunit(T),
+    xc0 = nothing, # note: this is only valid for the top-level model. Also helpful if a stand-alone model is simulated
+    xd0 = nothing,
+    x0 = nothing,
     seed = 1,
     integrator = RK4,
 )
@@ -196,10 +202,18 @@ function simulate(
     DEBUG && println("Using Δt = $Δt_max for continuous-time models.")
 
     # initialize random number generator
-    rng = Xoshiro(seed) # TODO: implement random draw hook (or macro?)
+    # rng = Xoshiro(seed) # TODO: implement random draw hook (or macro?)
+
+    # process initial state, if given
+    if x0 !== nothing
+        @assert xc0 === nothing && xd0 === nothing
+        xd0 = x0
+        xc0 = x0
+    end
 
     # build callable structure to mimic the model tree
-    model_working_copy = init_working_copy(model, t0, Δt_max, uc(t0), ud(t0)) # TODO: better variable name
+    model_working_copy =
+        init_working_copy(model, t0, Δt_max, uc(t0), ud(t0), xc0 = xc0, xd0 = xd0) # TODO: find better variable name for model_working_copy
 
     # simulate all systems that are due now
     t = t0
