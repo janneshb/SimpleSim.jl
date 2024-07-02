@@ -114,7 +114,6 @@ function init_working_copy(model, t0, Δt, uc0, ud0; xc0 = nothing, xd0 = nothin
         ) : nothing
 
     return (
-        # callable = model_callable,
         callable_ct = (u, t, model_working_copy) ->
             model_callable_ct(u, t, model, model_working_copy, Δt),
         callable_dt = (u, t, model_working_copy) ->
@@ -133,18 +132,18 @@ function init_working_copy(model, t0, Δt, uc0, ud0; xc0 = nothing, xd0 = nothin
     )
 end
 
-# adds an entry (t, xc, yc) to the working copy of the model
+# adds an entry (tc, xc, yc) to the working copy of the model
 function update_working_copy_ct!(model_working_copy, t, xc, yc)
-    push!(model_working_copy.tcs, t) # always store the time if the model was called
-    xc !== nothing ? push!(model_working_copy.xcs, xc) : nothing
-    yc !== nothing ? push!(model_working_copy.ycs, yc) : nothing
+    push!(model_working_copy.tcs, eltype(model_working_copy.tcs)(t)) # always store the time if the model was called
+    xc !== nothing ? push!(model_working_copy.xcs, eltype(model_working_copy.xcs)(xc)) : nothing
+    yc !== nothing ? push!(model_working_copy.ycs, eltype(model_working_copy.ycs)(yc)) : nothing
 end
 
-# adds an entry (t, xd, yd) to the working copy of the model
+# adds an entry (td, xd, yd) to the working copy of the model
 function update_working_copy_dt!(model_working_copy, t, xd, yd)
-    push!(model_working_copy.tds, t) # always store the time if the model was called
-    xd !== nothing ? push!(model_working_copy.xds, xd) : nothing
-    yd !== nothing ? push!(model_working_copy.yds, yd) : nothing
+    push!(model_working_copy.tds, eltype(model_working_copy.tds)(t)) # always store the time if the model was called
+    xd !== nothing ? push!(model_working_copy.xds, eltype(model_working_copy.xds)(xd)) : nothing
+    yd !== nothing ? push!(model_working_copy.yds, eltype(model_working_copy.yds)(yd)) : nothing
 end
 
 # reduce output and cast time series into matrix form
