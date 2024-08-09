@@ -30,23 +30,26 @@ end
 
 # @ct / @dt switches the context to CT/DT
 # @context returns the current context
-@enum SimpleSimContext Unknown = 0 CT = 1 DT = 2
+@enum SimulationContext ContextUnknown = 0 ContextCT = 1 ContextDT = 2
 macro ct()
-    :(global CONTEXT = CT)
+    :(global CONTEXT = ContextCT::SimulationContext)
 end
 macro dt()
-    :(global CONTEXT = DT)
+    :(global CONTEXT = ContextDT::SimulationContext)
 end
 macro call_completed()
-    :(global CONTEXT = Unknown)
+    :(global CONTEXT = ContextUnknown::SimulationContext)
 end
 macro context()
     :(CONTEXT)
 end
 
+# Model Type
+@enum ModelType TypeUnknown = 0 TypeCT = 1 TypeDT = 2 TypeHybrid = 3
+
 # DO NOT CHANGE THESE GLOBAL VARIABLES
 global MODEL_CALLS_DISABLED = false
-global CONTEXT = Unknown
+global CONTEXT = ContextUnknown::SimulationContext
 
 # initializes the "working copy" of the model that contains the states and outputs over the course of the simulation
 function init_working_copy(model, t0, Δt, uc0, ud0; xc0 = nothing, xd0 = nothing, level = 0)
@@ -113,7 +116,21 @@ function init_working_copy(model, t0, Δt, uc0, ud0; xc0 = nothing, xd0 = nothin
             [model.yd(xd0, ud0, model.p, t0)]
         ) : nothing
 
+    type = begin
+        temp_type = TypeUnknown::ModelType
+        if isCT(model)
+            temp_type = TypeCT::ModelType
+        elseif isDT(model)
+            temp_type = TypeDT::ModelType
+        end
+        if isHybrid(model)
+            temp_type = TypeHybrid::ModelType
+        end
+        temp_type
+    end
+
     return (
+        type = type,
         callable_ct = (u, t, model_working_copy) ->
             model_callable_ct(u, t, model, model_working_copy, Δt),
         callable_dt = (u, t, model_working_copy) ->
@@ -460,23 +477,11 @@ end
 ##############################
 function isCT(model)
     return (
-               hasproperty(model, :fc) &&
-               hasproperty(model, :yc) &&
-               model.fc !== nothing &&
-               model.yc !== nothing
-           ) ||
-           (
-               hasproperty(model, :xcs) &&
-               hasproperty(model, :xds) &&
-               model.xcs !== nothing &&
-               model.xds === nothing
-           ) ||
-           (
-               hasproperty(model, :xcs) &&
-               hasproperty(model, :xds) &&
-               model.xcs === nothing &&
-               model.xds === nothing
-           ) # last option is for state-less wrapper-models
+        hasproperty(model, :fc) &&
+        hasproperty(model, :yc) &&
+        model.fc !== nothing &&
+        model.yc !== nothing
+    ) || (hasproperty(model, :type) && model.type == TypeCT::ModelType)
 end
 
 function isDT(model)
@@ -487,12 +492,7 @@ function isDT(model)
         model.fd !== nothing &&
         model.yd !== nothing &&
         model.Δt !== nothing
-    ) || (
-        hasproperty(model, :xcs) &&
-        hasproperty(model, :xds) &&
-        model.xds !== nothing &&
-        model.xcs === nothing
-    )
+    ) || (hasproperty(model, :type) && model.type == TypeDT::ModelType)
 end
 
 function isHybrid(model)
@@ -510,30 +510,23 @@ function isHybrid(model)
             model.yc !== nothing &&
             model.Δt !== nothing
         )
-    ) || (
-        hasproperty(model, :xcs) &&
-        hasproperty(model, :xds) &&
-        model.xcs !== nothing &&
-        model.xds !== nothing &&
-        hasproperty(model, :Δt) &&
-        model.Δt !== nothing
-    )
+    ) || (hasproperty(model, :type) && model.type == TypeHybrid::ModelType)
 end
 
 function due(model, t)
     # TODO: this can be simplified
     context = @context
-    if isCT(model) && context == CT
+    if isCT(model) && context == ContextCT::SimulationContext
         return model.tcs[end] < t # CT models can always be updated if time has progressed
     end
-    if isDT(model) && context == DT
+    if isDT(model) && context == ContextDT::SimulationContext
         return model.tds[end] + model.Δt <= t
     end
     if isHybrid(model)
         # TODO: this might not work as it's supposed to
-        if context == CT
+        if context == ContextCT::SimulationContext
             return model.tcs[end] < t # CT models can always be updated if time has progressed
-        elseif context == DT
+        elseif context == ContextDT::SimulationContext
             return model.tds[end] + model.Δt <= t
         else
             @error "Could not determine if the model is due to update."
