@@ -135,19 +135,35 @@ end
 # adds an entry (tc, xc, yc) to the working copy of the model
 function update_working_copy_ct!(model_working_copy, t, xc, yc)
     push!(model_working_copy.tcs, eltype(model_working_copy.tcs)(t)) # always store the time if the model was called
-    xc !== nothing ? push!(model_working_copy.xcs, eltype(model_working_copy.xcs)(xc)) :
-    nothing
-    yc !== nothing ? push!(model_working_copy.ycs, eltype(model_working_copy.ycs)(yc)) :
-    nothing
+    try
+        xc !== nothing ? push!(model_working_copy.xcs, eltype(model_working_copy.xcs)(xc)) :
+        nothing
+    catch
+        @error "Could not update CT state evolution. Please check your state variables for type consistency"
+    end
+    try
+        yc !== nothing ? push!(model_working_copy.ycs, eltype(model_working_copy.ycs)(yc)) :
+        nothing
+    catch
+        @error "Could not update CT output evolution. Please check your output variables for type consistency"
+    end
 end
 
 # adds an entry (td, xd, yd) to the working copy of the model
 function update_working_copy_dt!(model_working_copy, t, xd, yd)
     push!(model_working_copy.tds, eltype(model_working_copy.tds)(t)) # always store the time if the model was called
-    xd !== nothing ? push!(model_working_copy.xds, eltype(model_working_copy.xds)(xd)) :
-    nothing
-    yd !== nothing ? push!(model_working_copy.yds, eltype(model_working_copy.yds)(yd)) :
-    nothing
+    try
+        xd !== nothing ? push!(model_working_copy.xds, eltype(model_working_copy.xds)(xd)) :
+        nothing
+    catch
+        @error "Could not update DT state evolution. Please check your state variables for type consistency"
+    end
+    try
+        yd !== nothing ? push!(model_working_copy.yds, eltype(model_working_copy.yds)(yd)) :
+        nothing
+    catch
+        @error "Could not update DT output evolution. Please check your output variables for type consistency"
+    end
 end
 
 # reduce output and cast time series into matrix form
