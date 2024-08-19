@@ -372,6 +372,7 @@ function model_callable_ct(uc, t, model, model_working_copy, Δt)
         t_next = model_working_copy.tcs[end] + Δt
 
         # TODO: this works, but can zero-crossing be done cleaner?
+        # TODO: protext against Rational overflow
         if hasproperty(model, :zc) && model.zc !== nothing
             Δt_zc = Δt
             if model.zc(xc_next, model.p, t_next) < -model_working_copy.zero_crossing_prec
