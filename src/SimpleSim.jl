@@ -3,6 +3,7 @@ module SimpleSim
 import Base.push!, Base.@inline, Base.gcd
 
 global DEFAULT_Δt = 1 // 100 # default step size for CT systems, must be rational!
+global DEFAULT_zero_crossing_precision = 1e-5
 global DEBUG = true
 global DISPLAY_PROGRESS = false
 global PROGRESS_SPACING = 1 // 1 # in the same unit as total time T
@@ -136,6 +137,7 @@ function init_working_copy(model, t0, Δt, uc0, ud0; xc0 = nothing, xd0 = nothin
         callable_dt = (u, t, model_working_copy) ->
             model_callable_dt(u, t, model, model_working_copy),
         Δt = hasproperty(model, :Δt) && model.Δt !== nothing ? model.Δt : Δt,
+        zero_crossing_prec = hasproperty(model, :zero_crossing_precision) && model.zero_crossing_precision !== nothing ? model.zero_crossing_precision : DEFAULT_zero_crossing_precision,
         # the following store the latest state
         tcs = hasproperty(model, :yc) && model.yc !== nothing ? [t0] : nothing,
         xcs = hasproperty(model, :fc) && model.fc !== nothing && xc0 !== nothing ? [xc0] :
@@ -280,29 +282,7 @@ function loop!(model_working_copy, model, uc, ud, t, Δt_max, T, integrator)
         div(t_next - Δt_max, PROGRESS_SPACING * oneunit(Δt_max)) ?
     println("t = ", float(t_next)) : nothing
 
-    @ct
-    if due(model_working_copy, t_next)
-        xc_prev = model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end]
-        uc_t_next = uc(t_next)
-        sub_tree =
-            hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
-        xc_next = step_ct(
-            model.fc,
-            xc_prev,
-            uc_t_next,
-            model.p,
-            t_next,
-            Δt_max,
-            model_working_copy.models,
-            integrator = integrator,
-        )
-        yc_next =
-            length(sub_tree) > 0 ?
-            model.yc(xc_next, uc_t_next, model.p, t_next, models = sub_tree) :
-            model.yc(xc_next, uc_t_next, model.p, t_next)
-        @call_completed
-        update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next)
-    end
+    (t_next, xc, yc, updated_state) = model_working_copy.callable_ct(uc(t), t_next, model_working_copy)
 
     @dt
     if due(model_working_copy, t_next)
@@ -357,11 +337,8 @@ macro call_ct!(model, u)
             @error "@call! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in umambiguous cases)."
 
         model_to_call = $(esc(model))
-        (xc, yc, updated_state) =
+        (t_next, xc, yc, updated_state) =
             model_to_call.callable_ct($(esc(u)), $(esc(:t)), model_to_call)
-        if updated_state
-            update_working_copy_ct!($(esc(model)), $(esc(:t)), xc, yc)
-        end
         yc
     end
 end
@@ -384,6 +361,7 @@ end
 function model_callable_ct(uc, t, model, model_working_copy, Δt)
     # TODO: print warning when calling a CT system from within a DT system
     @ct
+    t_next = t
     xc_next = model_working_copy.xcs[end]
     submodels = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
 
@@ -391,13 +369,39 @@ function model_callable_ct(uc, t, model, model_working_copy, Δt)
     if due(model_working_copy, t)
         xc_next =
             step_ct(model.fc, model_working_copy.xcs[end], uc, model.p, t, Δt, submodels)
+        t_next = model_working_copy.tcs[end] + Δt
+
+        # TODO: this works, but can zero-crossing be done cleaner?
+        if hasproperty(model, :zc) && model.zc !== nothing
+            Δt_zc = Δt
+            if model.zc(xc_next, model.p, t_next) < -model_working_copy.zero_crossing_prec
+                while model.zc(xc_next, model.p, t_next) < -model_working_copy.zero_crossing_prec
+                    # shorten Δt until zero crossing precission is held
+                    Δt_zc = 9 * (Δt_zc / 10) # this is kind of random. TODO: do a bisection or something.
+                    xc_next =
+                        step_ct(model.fc, model_working_copy.xcs[end], uc, model.p, t, Δt_zc, submodels)
+                    t_next = model_working_copy.tcs[end] + Δt_zc
+                end
+                xc_after_zc = model.zc_exec(xc_next, uc, model.p, t) # apply zero crossing change
+                yc_after_zc =
+                    length(submodels) > 0 ? model.yc(xc_after_zc, uc, model.p, t_next; models = submodels) :
+                    model.yc(xc_after_zc, uc, model.p, t_next)
+                update_working_copy_ct!(model_working_copy, t_next, xc_after_zc, yc_after_zc)
+
+                # fill in the remaining time of Δt to avoid Rational overflow
+                xc_next =
+                    step_ct(model.fc, xc_after_zc, uc, model.p, t, Δt - Δt_zc, submodels)
+                t_next += (Δt - Δt_zc)
+            end
+        end
         updated_state = true
     end
     yc_next =
-        length(submodels) > 0 ? model.yc(xc_next, uc, model.p, t; models = submodels) :
-        model.yc(xc_next, uc, model.p, t)
+        length(submodels) > 0 ? model.yc(xc_next, uc, model.p, t_next; models = submodels) :
+        model.yc(xc_next, uc, model.p, t_next)
     @call_completed
-    return (xc_next, yc_next, updated_state)
+    update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next)
+    return (t_next, xc_next, yc_next, updated_state)
 end
 
 function model_callable_dt(ud, t, model, model_working_copy)

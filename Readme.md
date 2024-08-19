@@ -6,6 +6,7 @@
 - [x] Check support for vector submodels
 - [ ] Write (proper) Julia tests
 - [ ] Implement random draw hook that is invariant to model structure
+- [ ] Zero-crossing detection / bouncing ball example
 - [ ] Make public
 
 
