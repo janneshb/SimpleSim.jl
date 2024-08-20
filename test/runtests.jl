@@ -10,6 +10,7 @@ using Suppressor
         include("../examples/hybrid_pendulum.jl")
         include("../examples/pendulum.jl")
         include("../examples/timing.jl")
+        include("../examples/bouncing_ball.jl")
     end
 end
 

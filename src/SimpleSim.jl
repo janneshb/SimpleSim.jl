@@ -285,35 +285,11 @@ function loop!(model_working_copy, model, uc, ud, t, Δt_max, T, integrator)
         div(t_next - Δt_max, PROGRESS_SPACING * oneunit(Δt_max)) ?
     println("t = ", float(t_next)) : nothing
 
-    (xc, yc, updated_state) =
+    (xc, yc, updated_state_ct) =
         model_working_copy.callable_ct(uc(t), t_next, model_working_copy)
 
-    @dt
-    if due(model_working_copy, t_next)
-        xd_prev = model_working_copy.xds === nothing ? nothing : model_working_copy.xds[end]
-        ud_t_next = ud(t_next)
-        sub_tree =
-            hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
-        xd_next = step_dt(
-            model.fd,
-            xd_prev,
-            ud_t_next,
-            model.p,
-            t_next,
-            model_working_copy.models,
-        )
-        yd_next =
-            length(sub_tree) > 0 ?
-            model.yd(
-                xd_next,
-                ud_t_next,
-                model.p,
-                t_next,
-                models = model_working_copy.models,
-            ) : model.yd(xd_next, ud_t_next, model.p, t_next)
-        @call_completed
-        update_working_copy_dt!(model_working_copy, t_next, xd_next, yd_next)
-    end
+    (xd, yd, updated_state_dt) =
+        model_working_copy.callable_dt(ud(t), t_next, model_working_copy)
 
     return true, t_next
 end
@@ -355,9 +331,6 @@ macro call_dt!(model, u)
         model_to_call = $(esc(model))
         (xd, yd, updated_state) =
             model_to_call.callable_dt($(esc(u)), $(esc(:t)), model_to_call)
-        if updated_state
-            update_working_copy_dt!($(esc(model)), $(esc(:t)), xd, yd)
-        end
         yd
     end
 end
@@ -373,7 +346,7 @@ function model_callable_ct(uc, t, model, model_working_copy, Δt)
     if due(model_working_copy, t)
         xc_next = step_ct(
             model.fc,
-            model_working_copy.xcs[end],
+            model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end],
             uc,
             model.p,
             model_working_copy.tcs[end],
@@ -441,17 +414,26 @@ end
 
 function model_callable_dt(ud, t, model, model_working_copy)
     @dt
-    xd_next = model_working_copy.xds[end]
+    xd_next = model_working_copy.xds === nothing ? nothing : model_working_copy.xds[end]
+    yd_next = model_working_copy.yds === nothing ? nothing : model_working_copy.yds[end]
     submodels = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
 
     updated_state = false
     if due(model_working_copy, t)
-        xd_next = step_dt(model.fd, model_working_copy.xds[end], ud, model.p, t, submodels)
+        xd_next = step_dt(
+            model.fd,
+            model_working_copy.xds === nothing ? nothing : model_working_copy.xds[end],
+            ud,
+            model.p,
+            t,
+            submodels,
+        )
+        yd_next =
+            length(submodels) > 0 ? model.yd(xd_next, ud, model.p, t; models = submodels) :
+            model.yd(xd_next, ud, model.p, t)
+        update_working_copy_dt!(model_working_copy, t, xd_next, yd_next)
         updated_state = true
     end
-    yd_next =
-        length(submodels) > 0 ? model.yd(xd_next, ud, model.p, t; models = submodels) :
-        model.yd(xd_next, ud, model.p, t)
     @call_completed
     return (xd_next, yd_next, updated_state)
 end

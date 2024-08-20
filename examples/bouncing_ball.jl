@@ -1,7 +1,7 @@
 using SimpleSim
 using StaticArrays
 
-show_plots = true
+show_plots = false
 
 stairs(x) = -round(x)
 
@@ -25,7 +25,7 @@ bouncing_ball = (
     zc_exec = zc_exec_bouncing_ball,
 )
 
-T = 10 // 1
+T = 11 // 1
 
 history = simulate(bouncing_ball, T = T)
 
