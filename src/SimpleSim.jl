@@ -3,7 +3,7 @@ module SimpleSim
 import Base.push!, Base.@inline, Base.gcd
 
 global DEFAULT_Δt = 1 // 100 # default step size for CT systems, must be rational!
-global DEFAULT_zero_crossing_precision = 1e-5
+global DEFAULT_zero_crossing_precision = 1e-6
 global DEBUG = true
 global DISPLAY_PROGRESS = false
 global PROGRESS_SPACING = 1 // 1 # in the same unit as total time T
@@ -137,7 +137,10 @@ function init_working_copy(model, t0, Δt, uc0, ud0; xc0 = nothing, xd0 = nothin
         callable_dt = (u, t, model_working_copy) ->
             model_callable_dt(u, t, model, model_working_copy),
         Δt = hasproperty(model, :Δt) && model.Δt !== nothing ? model.Δt : Δt,
-        zero_crossing_prec = hasproperty(model, :zero_crossing_precision) && model.zero_crossing_precision !== nothing ? model.zero_crossing_precision : DEFAULT_zero_crossing_precision,
+        zero_crossing_prec = hasproperty(model, :zero_crossing_precision) &&
+                             model.zero_crossing_precision !== nothing ?
+                             model.zero_crossing_precision :
+                             DEFAULT_zero_crossing_precision,
         # the following store the latest state
         tcs = hasproperty(model, :yc) && model.yc !== nothing ? [t0] : nothing,
         xcs = hasproperty(model, :fc) && model.fc !== nothing && xc0 !== nothing ? [xc0] :
@@ -282,7 +285,8 @@ function loop!(model_working_copy, model, uc, ud, t, Δt_max, T, integrator)
         div(t_next - Δt_max, PROGRESS_SPACING * oneunit(Δt_max)) ?
     println("t = ", float(t_next)) : nothing
 
-    (t_next, xc, yc, updated_state) = model_working_copy.callable_ct(uc(t), t_next, model_working_copy)
+    (t_next, xc, yc, updated_state) =
+        model_working_copy.callable_ct(uc(t), t_next, model_working_copy)
 
     @dt
     if due(model_working_copy, t_next)
@@ -376,18 +380,32 @@ function model_callable_ct(uc, t, model, model_working_copy, Δt)
         if hasproperty(model, :zc) && model.zc !== nothing
             Δt_zc = Δt
             if model.zc(xc_next, model.p, t_next) < -model_working_copy.zero_crossing_prec
-                while model.zc(xc_next, model.p, t_next) < -model_working_copy.zero_crossing_prec
+                while model.zc(xc_next, model.p, t_next) <
+                      -model_working_copy.zero_crossing_prec
                     # shorten Δt until zero crossing precission is held
                     Δt_zc = 9 * (Δt_zc / 10) # this is kind of random. TODO: do a bisection or something.
-                    xc_next =
-                        step_ct(model.fc, model_working_copy.xcs[end], uc, model.p, t, Δt_zc, submodels)
+                    xc_next = step_ct(
+                        model.fc,
+                        model_working_copy.xcs[end],
+                        uc,
+                        model.p,
+                        t,
+                        Δt_zc,
+                        submodels,
+                    )
                     t_next = model_working_copy.tcs[end] + Δt_zc
                 end
                 xc_after_zc = model.zc_exec(xc_next, uc, model.p, t) # apply zero crossing change
                 yc_after_zc =
-                    length(submodels) > 0 ? model.yc(xc_after_zc, uc, model.p, t_next; models = submodels) :
+                    length(submodels) > 0 ?
+                    model.yc(xc_after_zc, uc, model.p, t_next; models = submodels) :
                     model.yc(xc_after_zc, uc, model.p, t_next)
-                update_working_copy_ct!(model_working_copy, t_next, xc_after_zc, yc_after_zc)
+                update_working_copy_ct!(
+                    model_working_copy,
+                    t_next,
+                    xc_after_zc,
+                    yc_after_zc,
+                )
 
                 # fill in the remaining time of Δt to avoid Rational overflow
                 xc_next =
