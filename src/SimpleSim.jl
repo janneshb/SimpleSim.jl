@@ -285,7 +285,7 @@ function loop!(model_working_copy, model, uc, ud, t, Δt_max, T, integrator)
         div(t_next - Δt_max, PROGRESS_SPACING * oneunit(Δt_max)) ?
     println("t = ", float(t_next)) : nothing
 
-    (t_next, xc, yc, updated_state) =
+    (xc, yc, updated_state) =
         model_working_copy.callable_ct(uc(t), t_next, model_working_copy)
 
     @dt
@@ -341,7 +341,7 @@ macro call_ct!(model, u)
             @error "@call! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in umambiguous cases)."
 
         model_to_call = $(esc(model))
-        (t_next, xc, yc, updated_state) =
+        (xc, yc, updated_state) =
             model_to_call.callable_ct($(esc(u)), $(esc(:t)), model_to_call)
         yc
     end
@@ -364,63 +364,79 @@ end
 
 function model_callable_ct(uc, t, model, model_working_copy, Δt)
     # TODO: print warning when calling a CT system from within a DT system
-    @ct
-    t_next = t
-    xc_next = model_working_copy.xcs[end]
+    xc_next = model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end]
+    yc_next = model_working_copy.ycs === nothing ? nothing : model_working_copy.ycs[end]
     submodels = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
 
+    @ct
     updated_state = false
     if due(model_working_copy, t)
-        xc_next =
-            step_ct(model.fc, model_working_copy.xcs[end], uc, model.p, t, Δt, submodels)
+        xc_next = step_ct(
+            model.fc,
+            model_working_copy.xcs[end],
+            uc,
+            model.p,
+            model_working_copy.tcs[end],
+            Δt,
+            submodels,
+        )
         t_next = model_working_copy.tcs[end] + Δt
 
-        # TODO: this works, but can zero-crossing be done cleaner?
-        # TODO: protext against Rational overflow
-        if hasproperty(model, :zc) && model.zc !== nothing
-            Δt_zc = Δt
-            if model.zc(xc_next, model.p, t_next) < -model_working_copy.zero_crossing_prec
-                while model.zc(xc_next, model.p, t_next) <
-                      -model_working_copy.zero_crossing_prec
-                    # shorten Δt until zero crossing precission is held
-                    Δt_zc = 9 * (Δt_zc / 10) # this is kind of random. TODO: do a bisection or something.
-                    xc_next = step_ct(
-                        model.fc,
-                        model_working_copy.xcs[end],
-                        uc,
-                        model.p,
-                        t,
-                        Δt_zc,
-                        submodels,
-                    )
-                    t_next = model_working_copy.tcs[end] + Δt_zc
-                end
-                xc_after_zc = model.zc_exec(xc_next, uc, model.p, t) # apply zero crossing change
-                yc_after_zc =
-                    length(submodels) > 0 ?
-                    model.yc(xc_after_zc, uc, model.p, t_next; models = submodels) :
-                    model.yc(xc_after_zc, uc, model.p, t_next)
-                update_working_copy_ct!(
-                    model_working_copy,
-                    t_next,
-                    xc_after_zc,
-                    yc_after_zc,
-                )
+        if hasproperty(model, :zc) &&
+           model.zc !== nothing &&
+           model.zc(xc_next, model.p, t_next) < -model_working_copy.zero_crossing_prec
+            # Initialize bisection algorithm
+            xc_lower = model_working_copy.xcs[end]
+            t_lower = model_working_copy.tcs[end]
+            t_upper = t_next
 
-                # fill in the remaining time of Δt to avoid Rational overflow
-                xc_next =
-                    step_ct(model.fc, xc_after_zc, uc, model.p, t, Δt - Δt_zc, submodels)
-                t_next += (Δt - Δt_zc)
+            # Run bisection until zero crossing precision is met
+            while true
+                try
+                    Δt_bi = (t_upper - t_lower) / 2
+                    xc_bi =
+                        step_ct(model.fc, xc_lower, uc, model.p, t_lower, Δt_bi, submodels)
+                    zc_bi = model.zc(xc_bi, model.p, t_lower + Δt_bi)
+
+                    if zc_bi < -model_working_copy.zero_crossing_prec / 2
+                        # t_lower + Δt_bi still leads to zero crossing
+                        t_upper = t_lower + Δt_bi
+                    elseif zc_bi > model_working_copy.zero_crossing_prec / 2
+                        # t_lower + Δt_bi doesn't lead to zero crossing anymore
+                        t_lower = t_lower + Δt_bi
+                        xc_lower = xc_bi
+                    else
+                        t_next = t_lower + Δt_bi
+                        xc_next = xc_bi
+                        break # termination of algorithm if within +/-(zero_crossing_prec/2)
+                    end
+                catch
+                    @warn "Zero-crossing precision could not be met."
+                    break # probably a Rational overflow occured. Accept current precision but print warning
+                end
             end
+
+            xc_next = model.zc_exec(xc_next, uc, model.p, t_next) # apply zero crossing change
+            yc_next =
+                length(submodels) > 0 ?
+                model.yc(xc_next, uc, model.p, t_next; models = submodels) :
+                model.yc(xc_next, uc, model.p, t_next)
+            Δt_post_zc = model_working_copy.tcs[end] + Δt - t_next
+            update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next)
+
+            # fill in the remaining time of Δt to avoid Rational overflow in future iterations
+            xc_next = step_ct(model.fc, xc_next, uc, model.p, t_next, Δt_post_zc, submodels)
+            t_next += Δt_post_zc
         end
+        yc_next =
+            length(submodels) > 0 ?
+            model.yc(xc_next, uc, model.p, t_next; models = submodels) :
+            model.yc(xc_next, uc, model.p, t_next)
+        update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next)
         updated_state = true
     end
-    yc_next =
-        length(submodels) > 0 ? model.yc(xc_next, uc, model.p, t_next; models = submodels) :
-        model.yc(xc_next, uc, model.p, t_next)
     @call_completed
-    update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next)
-    return (t_next, xc_next, yc_next, updated_state)
+    return (xc_next, yc_next, updated_state)
 end
 
 function model_callable_dt(ud, t, model, model_working_copy)

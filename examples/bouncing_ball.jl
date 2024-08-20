@@ -25,7 +25,7 @@ bouncing_ball = (
     zc_exec = zc_exec_bouncing_ball,
 )
 
-T = 7 // 1
+T = 10 // 1
 
 history = simulate(bouncing_ball, T = T)
 
