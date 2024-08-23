@@ -87,6 +87,7 @@ function init_working_copy(
     level = 0,
     recursive = false,
     structure_only = false,
+    fieldname = "top-level model",
 )
     function build_sub_tree(models::NamedTuple, structure_only)
         return NamedTuple{keys(models)}((
@@ -100,7 +101,8 @@ function init_working_copy(
                     level = level + 1,
                     recursive = true,
                     structure_only = structure_only,
-                ) for (i, m_i) in enumerate(models)
+                    fieldname = ".$fieldname_i",
+                ) for (m_i, fieldname_i) in zip(models, fieldnames(typeof(models)))
             )...,
         ))
     end
@@ -117,7 +119,8 @@ function init_working_copy(
                     level = level + 1,
                     recursive = true,
                     structure_only = structure_only,
-                ) for (i, m_i) in enumerate(models)
+                    fieldname = "($fieldname_i)",
+                ) for (m_i, fieldname_i) in zip(models, fieldnames(typeof(models)))
             )...,
         )
     end
@@ -133,10 +136,12 @@ function init_working_copy(
                 level = level + 1,
                 recursive = true,
                 structure_only = structure_only,
+                fieldname = "[$i]",
             ) for (i, m_i) in enumerate(models)
         ]
     end
 
+    model_name = "$fieldname / $(Base.typename(typeof(model)).wrapper)"
     global MODEL_COUNT = recursive ? MODEL_COUNT + 1 : 1
     model_id = MODEL_COUNT
 
@@ -202,6 +207,7 @@ function init_working_copy(
         BASE_RNG(model.wc_seed) : BASE_RNG(model_id)
 
     return (
+        name = model_name,
         model_id = model_id,
         type = type,
         callable_ct! = !structure_only ?
@@ -733,7 +739,6 @@ export model_tree
 function model_tree(model)
     function print_model(
         model,
-        model_name,
         depth;
         last = false,
         prev_groups_closed = [true for _ = 1:depth],
@@ -747,42 +752,25 @@ function model_tree(model)
         end
         !last ? print(printT) : print(printL)
         print(printLine)
-        println("$(model.model_id) ($(model.type)): $model_name ")
+        println("$(model.model_id) ($(model.type)): $(model.name) ")
     end
 
     @quiet working_copy = init_working_copy(model, structure_only = true)
 
     # print depth first / FIFO
-    root_name = "$(Base.typename(typeof(model)).wrapper)"
-    root_name === "NamedTuple" ? "NamedTuple 'root'" : root_name
     stack = Any[working_copy]
     depth_stack = Int[0]
-    name_stack = String[root_name]
     prev_groups_closed = []
-
     while !isempty(stack)
         node = pop!(stack)
         node_depth = pop!(depth_stack)
-        node_name = pop!(name_stack)
         last = isempty(stack) || depth_stack[1] != node_depth ? true : false
 
-        print_model(
-            node,
-            node_name,
-            node_depth,
-            last = last,
-            prev_groups_closed = prev_groups_closed,
-        )
+        print_model(node, node_depth, last = last, prev_groups_closed = prev_groups_closed)
 
         length(node.models) > 0 ? push!(prev_groups_closed, last) :
-        (last ? pop!(prev_groups_closed) : nothing)
-        for (i, child) in enumerate(node.models)
-            node_name = "$(Base.typename(typeof(model)).wrapper)"
-            node_name =
-                node_name === "NamedTuple" ?
-                "NamedTuple '" * string(fieldnames(typeof(node.models))[i]) * "'" :
-                node_name
-            pushfirst!(name_stack, node_name)
+        (last && length(prev_groups_closed) > 0 ? pop!(prev_groups_closed) : nothing)
+        for child in node.models
             pushfirst!(depth_stack, node_depth + 1)
             pushfirst!(stack, child)
         end
