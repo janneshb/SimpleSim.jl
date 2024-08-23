@@ -233,7 +233,8 @@ function init_working_copy(
               model.fd !== nothing &&
               xd0 !== nothing ? [xd0] : nothing,
         yds = yds0,
-        wds = !structure_only && hasproperty(model, :wd) ? [model.wd(ud0, model.p, t0, rng_dt)] : nothing,
+        wds = !structure_only && hasproperty(model, :wd) ?
+              [model.wd(ud0, model.p, t0, rng_dt)] : nothing,
         rng_dt = rng_dt,
         models = sub_tree,
     )
@@ -272,7 +273,8 @@ function update_working_copy_dt!(model_working_copy, t, xd, yd, wd)
         @error "Could not update DT output evolution. Please check your output variables for type consistency"
     end
     try
-        wd !== nothing ? push!(model_working_copy.wds, eltype(model_working_copy.wds)(wd)) : nothing
+        wd !== nothing ? push!(model_working_copy.wds, eltype(model_working_copy.wds)(wd)) :
+        nothing
     catch
         @error "Could not update DT random draw evolution. Please check your random variables for type consistency"
     end
@@ -440,7 +442,6 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt)
     updated_state = false
     if due(model_working_copy, t)
         xc_next = step_ct(
-            model_working_copy,
             model.fc,
             model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end],
             uc,
@@ -463,16 +464,8 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt)
             while true
                 try
                     Δt_bi = (t_upper - t_lower) / 2
-                    xc_bi = step_ct(
-                        model_working_copy,
-                        model.fc,
-                        xc_lower,
-                        uc,
-                        model.p,
-                        t_lower,
-                        Δt_bi,
-                        submodels,
-                    )
+                    xc_bi =
+                        step_ct(model.fc, xc_lower, uc, model.p, t_lower, Δt_bi, submodels)
                     zc_bi = model.zc(xc_bi, model.p, t_lower + Δt_bi)
 
                     if zc_bi < -model_working_copy.zero_crossing_prec / 2
@@ -502,16 +495,7 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt)
             update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next)
 
             # fill in the remaining time of Δt to avoid Rational overflow in future iterations
-            xc_next = step_ct(
-                model_working_copy,
-                model.fc,
-                xc_next,
-                uc,
-                model.p,
-                t_next,
-                Δt_post_zc,
-                submodels,
-            )
+            xc_next = step_ct(model.fc, xc_next, uc, model.p, t_next, Δt_post_zc, submodels)
             t_next += Δt_post_zc
         end
         yc_next =
@@ -533,9 +517,10 @@ function model_callable_dt!(ud, t, model, model_working_copy)
 
     updated_state = false
     if due(model_working_copy, t)
-        wd_next = hasproperty(model, :wd) ? model.wd(ud, model.p, t, model_working_copy.rng_dt) : nothing
+        wd_next =
+            hasproperty(model, :wd) ? model.wd(ud, model.p, t, model_working_copy.rng_dt) :
+            nothing
         xd_next = step_dt(
-            model_working_copy,
             model.fd,
             model_working_copy.xds === nothing ? nothing : model_working_copy.xds[end],
             ud,
@@ -609,6 +594,7 @@ end
 
 # Performs a random draw for this current model
 # TODO: this doesn't work yet. Is there any way to make it even work this way?
+#=
 export @draw
 macro draw()
     quote
@@ -617,6 +603,7 @@ macro draw()
         end
     end
 end
+=#
 
 
 ##############################
@@ -759,8 +746,9 @@ function step_ct(fc, x, args...; integrator = RK4)
 end
 
 # steps a discrete time model
-function step_dt(this, fd, x, u, p, t, submodel_tree)
-    return length(submodel_tree) > 0 ? fd(x, u, p, t, models = submodel_tree) : fd(x, u, p, t)
+function step_dt(fd, x, u, p, t, submodel_tree)
+    return length(submodel_tree) > 0 ? fd(x, u, p, t, models = submodel_tree) :
+           fd(x, u, p, t)
 end
 
 export model_tree
