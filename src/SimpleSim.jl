@@ -77,58 +77,62 @@ printSpace = " "
 
 # initializes the "working copy" of the model that contains the states and outputs over the course of the simulation
 function init_working_copy(
-    model,
-    t0,
-    Δt,
-    uc0,
-    ud0;
+    model;
+    t0 = nothing,
+    Δt = nothing,
+    uc0 = nothing,
+    ud0 = nothing,
     xc0 = nothing,
     xd0 = nothing,
     level = 0,
     recursive = false,
+    structure_only = false,
 )
-    function build_sub_tree(models::NamedTuple)
+    function build_sub_tree(models::NamedTuple, structure_only)
         return NamedTuple{keys(models)}((
             (
                 init_working_copy(
                     m_i,
-                    t0,
-                    Δt,
-                    nothing,
-                    nothing;
+                    t0 = t0,
+                    Δt = Δt,
+                    uc0 = nothing,
+                    ud0 = nothing;
                     level = level + 1,
                     recursive = true,
+                    structure_only = structure_only,
                 ) for (i, m_i) in enumerate(models)
             )...,
         ))
     end
 
-    function build_sub_tree(models::Tuple)
+    function build_sub_tree(models::Tuple, structure_only)
         return (
             (
                 init_working_copy(
                     m_i,
-                    t0,
-                    Δt,
-                    nothing,
-                    nothing;
+                    t0 = t0,
+                    Δt = Δt,
+                    uc0 = nothing,
+                    ud0 = nothing;
                     level = level + 1,
                     recursive = true,
+                    structure_only = structure_only,
                 ) for (i, m_i) in enumerate(models)
             )...,
         )
     end
 
-    function build_sub_tree(models::Vector)
+    function build_sub_tree(models::Vector, structure_only)
         return [
             init_working_copy(
                 m_i,
-                t0,
-                Δt,
-                nothing,
-                nothing;
+                t0 = t0,
+                Δt = Δt,
+                uc0 = nothing,
+                ud0 = nothing;
                 level = level + 1,
                 recursive = true,
+                structure_only = structure_only,
             ) for (i, m_i) in enumerate(models)
         ]
     end
@@ -145,7 +149,7 @@ function init_working_copy(
     ) : nothing
     sub_tree = (;)
     if hasproperty(model, :models) && model.models !== nothing
-        sub_tree = build_sub_tree(model.models)
+        sub_tree = build_sub_tree(model.models, structure_only)
     end
 
     xc0 =
@@ -155,7 +159,7 @@ function init_working_copy(
         uc0 === nothing ?
         (hasproperty(model, :uc0) && model.uc0 !== nothing ? model.uc0 : nothing) : uc0
     ycs0 =
-        hasproperty(model, :yc) && model.yc !== nothing ?
+        !structure_only && hasproperty(model, :yc) && model.yc !== nothing ?
         (
             length(sub_tree) > 0 ? [model.yc(xc0, uc0, model.p, t0; models = sub_tree)] :
             [model.yc(xc0, uc0, model.p, t0)]
@@ -168,7 +172,7 @@ function init_working_copy(
         uc0 === nothing ?
         (hasproperty(model, :ud0) && model.ud0 !== nothing ? model.ud0 : nothing) : ud0
     yds0 =
-        hasproperty(model, :yd) && model.yd !== nothing ?
+        !structure_only && hasproperty(model, :yd) && model.yd !== nothing ?
         (
             length(sub_tree) > 0 ? [model.yd(xd0, ud0, model.p, t0; models = sub_tree)] :
             [model.yd(xd0, ud0, model.p, t0)]
@@ -200,23 +204,33 @@ function init_working_copy(
     return (
         model_id = model_id,
         type = type,
-        callable_ct! = (u, t, model_working_copy) ->
-            model_callable_ct!(u, t, model, model_working_copy, Δt),
-        callable_dt! = (u, t, model_working_copy) ->
-            model_callable_dt!(u, t, model, model_working_copy),
-        Δt = hasproperty(model, :Δt) && model.Δt !== nothing ? model.Δt : Δt,
-        zero_crossing_prec = hasproperty(model, :zero_crossing_precision) &&
+        callable_ct! = !structure_only ?
+                       (u, t, model_working_copy) ->
+            model_callable_ct!(u, t, model, model_working_copy, Δt) : nothing,
+        callable_dt! = !structure_only ?
+                       (u, t, model_working_copy) ->
+            model_callable_dt!(u, t, model, model_working_copy) : nothing,
+        Δt = !structure_only && hasproperty(model, :Δt) && model.Δt !== nothing ? model.Δt :
+             Δt,
+        zero_crossing_prec = !structure_only &&
+                             hasproperty(model, :zero_crossing_precision) &&
                              model.zero_crossing_precision !== nothing ?
                              model.zero_crossing_precision :
                              DEFAULT_zero_crossing_precision,
         # the following store the latest state
-        tcs = hasproperty(model, :yc) && model.yc !== nothing ? [t0] : nothing,
-        xcs = hasproperty(model, :fc) && model.fc !== nothing && xc0 !== nothing ? [xc0] :
+        tcs = !structure_only && hasproperty(model, :yc) && model.yc !== nothing ? [t0] :
               nothing,
+        xcs = !structure_only &&
+              hasproperty(model, :fc) &&
+              model.fc !== nothing &&
+              xc0 !== nothing ? [xc0] : nothing,
         ycs = ycs0,
-        tds = hasproperty(model, :yd) && model.yd !== nothing ? [t0] : nothing,
-        xds = hasproperty(model, :fd) && model.fd !== nothing && xd0 !== nothing ? [xd0] :
+        tds = !structure_only && hasproperty(model, :yd) && model.yd !== nothing ? [t0] :
               nothing,
+        xds = !structure_only &&
+              hasproperty(model, :fd) &&
+              model.fd !== nothing &&
+              xd0 !== nothing ? [xd0] : nothing,
         yds = yds0,
         models = sub_tree,
         rng_dt = rng_dt,
@@ -300,7 +314,6 @@ function simulate(
     xc0 = nothing, # note: this is only valid for the top-level model. Also helpful if a stand-alone model is simulated
     xd0 = nothing,
     x0 = nothing,
-    seed = 1,
     integrator = RK4,
 )
 
@@ -324,8 +337,15 @@ function simulate(
     end
 
     # build callable structure to mimic the model tree
-    model_working_copy =
-        init_working_copy(model, t0, Δt_max, uc(t0), ud(t0), xc0 = xc0, xd0 = xd0) # TODO: find better variable name for model_working_copy
+    model_working_copy = init_working_copy(
+        model,
+        t0 = t0,
+        Δt = Δt_max,
+        uc0 = uc(t0),
+        ud0 = ud(t0),
+        xc0 = xc0,
+        xd0 = xd0,
+    ) # TODO: find better variable name for model_working_copy
 
     # simulate all systems that are due now
     t = t0
@@ -730,7 +750,7 @@ function model_tree(model)
         println("$(model.model_id) ($(model.type)): $model_name ")
     end
 
-    @quiet working_copy = init_working_copy(model, 0 // 1, 1 // 1, nothing, nothing) # TODO: passing nothings is not dimensional safe
+    @quiet working_copy = init_working_copy(model, structure_only = true)
 
     # print depth first / FIFO
     root_name = "$(Base.typename(typeof(model)).wrapper)"
