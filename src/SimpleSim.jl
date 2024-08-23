@@ -89,7 +89,7 @@ function init_working_copy(
     structure_only = false,
     fieldname = "top-level model",
 )
-    function build_sub_tree(models::NamedTuple, structure_only)
+    function build_sub_tree(models::NamedTuple)
         return NamedTuple{keys(models)}((
             (
                 init_working_copy(
@@ -107,7 +107,7 @@ function init_working_copy(
         ))
     end
 
-    function build_sub_tree(models::Tuple, structure_only)
+    function build_sub_tree(models::Tuple)
         return (
             (
                 init_working_copy(
@@ -125,7 +125,7 @@ function init_working_copy(
         )
     end
 
-    function build_sub_tree(models::Vector, structure_only)
+    function build_sub_tree(models::Vector)
         return [
             init_working_copy(
                 m_i,
@@ -154,7 +154,7 @@ function init_working_copy(
     ) : nothing
     sub_tree = (;)
     if hasproperty(model, :models) && model.models !== nothing
-        sub_tree = build_sub_tree(model.models, structure_only)
+        sub_tree = build_sub_tree(model.models)
     end
 
     xc0 =
@@ -196,15 +196,10 @@ function init_working_copy(
         temp_type
     end
 
-    wd = nothing
-    wc = nothing
-
     rng_dt =
-        wd !== nothing && hasproperty(model, :wd_seed) && model.wd_seed !== nothing ?
-        BASE_RNG(model.wd_seed) : BASE_RNG(model_id)
-    rng_ct =
-        wc !== nothing && hasproperty(model, :wc_seed) && model.wc_seed !== nothing ?
-        BASE_RNG(model.wc_seed) : BASE_RNG(model_id)
+        hasproperty(model, :wd) &&
+        hasproperty(model, :wd_seed) &&
+        model.wd_seed !== nothing ? BASE_RNG(model.wd_seed) : BASE_RNG(model_id)
 
     return (
         name = model_name,
@@ -238,9 +233,9 @@ function init_working_copy(
               model.fd !== nothing &&
               xd0 !== nothing ? [xd0] : nothing,
         yds = yds0,
-        models = sub_tree,
+        wds = !structure_only && hasproperty(model, :wd) ? [model.wd(ud0, model.p, t0, rng_dt)] : nothing,
         rng_dt = rng_dt,
-        rng_ct = rng_ct,
+        models = sub_tree,
     )
 end
 
@@ -262,7 +257,7 @@ function update_working_copy_ct!(model_working_copy, t, xc, yc)
 end
 
 # adds an entry (td, xd, yd) to the working copy of the model
-function update_working_copy_dt!(model_working_copy, t, xd, yd)
+function update_working_copy_dt!(model_working_copy, t, xd, yd, wd)
     push!(model_working_copy.tds, eltype(model_working_copy.tds)(t)) # always store the time if the model was called
     try
         xd !== nothing ? push!(model_working_copy.xds, eltype(model_working_copy.xds)(xd)) :
@@ -275,6 +270,11 @@ function update_working_copy_dt!(model_working_copy, t, xd, yd)
         nothing
     catch
         @error "Could not update DT output evolution. Please check your output variables for type consistency"
+    end
+    try
+        wd !== nothing ? push!(model_working_copy.wds, eltype(model_working_copy.wds)(wd)) : nothing
+    catch
+        @error "Could not update DT random draw evolution. Please check your random variables for type consistency"
     end
 end
 
@@ -301,6 +301,7 @@ function post_process(out)
         tds = out.tds,
         xds = out.xds !== nothing ? reduce(vcat, transpose.(out.xds)) : nothing,
         yds = out.yds !== nothing ? reduce(vcat, transpose.(out.yds)) : nothing,
+        wds = out.wds !== nothing ? reduce(vcat, transpose.(out.wds)) : nothing,
         models = post_process_submodels(out.models),
     )
 end
@@ -331,9 +332,6 @@ function simulate(
     # find smallest time-step
     Δt_max = find_min_Δt(model, Δt_max)
     DEBUG && println("Using Δt = $Δt_max for continuous-time models.")
-
-    # initialize random number generator
-    # rng = Xoshiro(seed) # TODO: implement random draw hook (or macro?)
 
     # process initial state, if given
     if x0 !== nothing
@@ -442,6 +440,7 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt)
     updated_state = false
     if due(model_working_copy, t)
         xc_next = step_ct(
+            model_working_copy,
             model.fc,
             model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end],
             uc,
@@ -464,8 +463,16 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt)
             while true
                 try
                     Δt_bi = (t_upper - t_lower) / 2
-                    xc_bi =
-                        step_ct(model.fc, xc_lower, uc, model.p, t_lower, Δt_bi, submodels)
+                    xc_bi = step_ct(
+                        model_working_copy,
+                        model.fc,
+                        xc_lower,
+                        uc,
+                        model.p,
+                        t_lower,
+                        Δt_bi,
+                        submodels,
+                    )
                     zc_bi = model.zc(xc_bi, model.p, t_lower + Δt_bi)
 
                     if zc_bi < -model_working_copy.zero_crossing_prec / 2
@@ -495,7 +502,16 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt)
             update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next)
 
             # fill in the remaining time of Δt to avoid Rational overflow in future iterations
-            xc_next = step_ct(model.fc, xc_next, uc, model.p, t_next, Δt_post_zc, submodels)
+            xc_next = step_ct(
+                model_working_copy,
+                model.fc,
+                xc_next,
+                uc,
+                model.p,
+                t_next,
+                Δt_post_zc,
+                submodels,
+            )
             t_next += Δt_post_zc
         end
         yc_next =
@@ -517,7 +533,9 @@ function model_callable_dt!(ud, t, model, model_working_copy)
 
     updated_state = false
     if due(model_working_copy, t)
+        wd_next = hasproperty(model, :wd) ? model.wd(ud, model.p, t, model_working_copy.rng_dt) : nothing
         xd_next = step_dt(
+            model_working_copy,
             model.fd,
             model_working_copy.xds === nothing ? nothing : model_working_copy.xds[end],
             ud,
@@ -528,7 +546,7 @@ function model_callable_dt!(ud, t, model, model_working_copy)
         yd_next =
             length(submodels) > 0 ? model.yd(xd_next, ud, model.p, t; models = submodels) :
             model.yd(xd_next, ud, model.p, t)
-        update_working_copy_dt!(model_working_copy, t, xd_next, yd_next)
+        update_working_copy_dt!(model_working_copy, t, xd_next, yd_next, wd_next)
         updated_state = true
     end
     @call_completed
@@ -586,6 +604,17 @@ end
 macro state_dt(model)
     quote
         $(esc(model)).xds[end]
+    end
+end
+
+# Performs a random draw for this current model
+# TODO: this doesn't work yet. Is there any way to make it even work this way?
+export @draw
+macro draw()
+    quote
+        quote
+            local model_working_copy = $(esc($(esc(:this))))
+        end
     end
 end
 
@@ -730,9 +759,8 @@ function step_ct(fc, x, args...; integrator = RK4)
 end
 
 # steps a discrete time model
-function step_dt(fd, x, u, p, t, submodel_tree)
-    return length(submodel_tree) > 0 ? fd(x, u, p, t, models = submodel_tree) :
-           fd(x, u, p, t)
+function step_dt(this, fd, x, u, p, t, submodel_tree)
+    return length(submodel_tree) > 0 ? fd(x, u, p, t, models = submodel_tree) : fd(x, u, p, t)
 end
 
 export model_tree
