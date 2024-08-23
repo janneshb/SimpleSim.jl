@@ -1,5 +1,6 @@
 module SimpleSim
 
+using Random
 import Base.push!, Base.@inline, Base.gcd
 
 global DEFAULT_Δt = 1 // 100 # default step size for CT systems, must be rational!
@@ -7,6 +8,7 @@ global DEFAULT_zero_crossing_precision = 1e-6
 global DEBUG = true
 global DISPLAY_PROGRESS = false
 global PROGRESS_SPACING = 1 // 1 # in the same unit as total time T
+global BASE_RNG = MersenneTwister
 
 #########################
 #       Utilities       #
@@ -20,6 +22,19 @@ global PROGRESS_SPACING = 1 // 1 # in the same unit as total time T
 end
 @inline _check_rational(x) = oneunit(x) * _check_rational(x.val) # assume it's a Unitful.jl Quantity
 gcd(x, y) = oneunit(x) * Base.gcd(x.val, y.val) # for Unitful.jl Quantities
+
+# @quiet macro disables DEBUG and DISABLE_PROGRESS output for the command given to it
+macro quiet(command)
+    quote
+        exDEBUG = DEBUG
+        exDISPLAY_PROGRESS = DISPLAY_PROGRESS
+        global DEBUG = false
+        global DISPLAY_PROGRESS = false
+        $(esc(command))
+        global DEBUG = exDEBUG
+        global DISPLAY_PROGRESS = exDISPLAY_PROGRESS
+    end
+end
 
 # @safeguard_on / @safeguard_off are macros for internal use only to protect models from being called
 macro safeguard_on()
@@ -51,14 +66,39 @@ end
 # DO NOT CHANGE THESE GLOBAL VARIABLES
 global MODEL_CALLS_DISABLED = false
 global CONTEXT = ContextUnknown::SimulationContext
+global MODEL_COUNT = 0
+
+# For model tree printing, see model_tree(model)
+printI = "│"
+printT = '├'
+printLine = '─'
+printL = "└"
+printSpace = " "
 
 # initializes the "working copy" of the model that contains the states and outputs over the course of the simulation
-function init_working_copy(model, t0, Δt, uc0, ud0; xc0 = nothing, xd0 = nothing, level = 0)
+function init_working_copy(
+    model,
+    t0,
+    Δt,
+    uc0,
+    ud0;
+    xc0 = nothing,
+    xd0 = nothing,
+    level = 0,
+    recursive = false,
+)
     function build_sub_tree(models::NamedTuple)
         return NamedTuple{keys(models)}((
             (
-                init_working_copy(m_i, t0, Δt, nothing, nothing; level = level + 1) for
-                m_i in models
+                init_working_copy(
+                    m_i,
+                    t0,
+                    Δt,
+                    nothing,
+                    nothing;
+                    level = level + 1,
+                    recursive = true,
+                ) for (i, m_i) in enumerate(models)
             )...,
         ))
     end
@@ -66,18 +106,35 @@ function init_working_copy(model, t0, Δt, uc0, ud0; xc0 = nothing, xd0 = nothin
     function build_sub_tree(models::Tuple)
         return (
             (
-                init_working_copy(m_i, t0, Δt, nothing, nothing; level = level + 1) for
-                m_i in models
+                init_working_copy(
+                    m_i,
+                    t0,
+                    Δt,
+                    nothing,
+                    nothing;
+                    level = level + 1,
+                    recursive = true,
+                ) for (i, m_i) in enumerate(models)
             )...,
         )
     end
 
     function build_sub_tree(models::Vector)
         return [
-            init_working_copy(m_i, t0, Δt, nothing, nothing; level = level + 1) for
-            m_i in models
+            init_working_copy(
+                m_i,
+                t0,
+                Δt,
+                nothing,
+                nothing;
+                level = level + 1,
+                recursive = true,
+            ) for (i, m_i) in enumerate(models)
         ]
     end
+
+    global MODEL_COUNT = recursive ? MODEL_COUNT + 1 : 1
+    model_id = MODEL_COUNT
 
     # TODO: add support for StaticArrays and better type inference
     DEBUG && level == 0 ? println("Initializing models at t = ", float(t0)) : nothing
@@ -130,12 +187,23 @@ function init_working_copy(model, t0, Δt, uc0, ud0; xc0 = nothing, xd0 = nothin
         temp_type
     end
 
+    wd = nothing
+    wc = nothing
+
+    rng_dt =
+        wd !== nothing && hasproperty(model, :wd_seed) && model.wd_seed !== nothing ?
+        BASE_RNG(model.wd_seed) : BASE_RNG(model_id)
+    rng_ct =
+        wc !== nothing && hasproperty(model, :wc_seed) && model.wc_seed !== nothing ?
+        BASE_RNG(model.wc_seed) : BASE_RNG(model_id)
+
     return (
+        model_id = model_id,
         type = type,
-        callable_ct = (u, t, model_working_copy) ->
-            model_callable_ct(u, t, model, model_working_copy, Δt),
-        callable_dt = (u, t, model_working_copy) ->
-            model_callable_dt(u, t, model, model_working_copy),
+        callable_ct! = (u, t, model_working_copy) ->
+            model_callable_ct!(u, t, model, model_working_copy, Δt),
+        callable_dt! = (u, t, model_working_copy) ->
+            model_callable_dt!(u, t, model, model_working_copy),
         Δt = hasproperty(model, :Δt) && model.Δt !== nothing ? model.Δt : Δt,
         zero_crossing_prec = hasproperty(model, :zero_crossing_precision) &&
                              model.zero_crossing_precision !== nothing ?
@@ -151,6 +219,8 @@ function init_working_copy(model, t0, Δt, uc0, ud0; xc0 = nothing, xd0 = nothin
               nothing,
         yds = yds0,
         models = sub_tree,
+        rng_dt = rng_dt,
+        rng_ct = rng_ct,
     )
 end
 
@@ -203,6 +273,7 @@ function post_process(out)
     end
 
     return (
+        model_id = out.model_id,
         Δt = hasproperty(out, :Δt) && out.Δt !== nothing ? out.Δt : Δt,
         tcs = out.tcs,
         xcs = out.xcs !== nothing ? reduce(vcat, transpose.(out.xcs)) : nothing,
@@ -286,10 +357,10 @@ function loop!(model_working_copy, model, uc, ud, t, Δt_max, T, integrator)
     println("t = ", float(t_next)) : nothing
 
     (xc, yc, updated_state_ct) =
-        model_working_copy.callable_ct(uc(t), t_next, model_working_copy)
+        model_working_copy.callable_ct!(uc(t), t_next, model_working_copy)
 
     (xd, yd, updated_state_dt) =
-        model_working_copy.callable_dt(ud(t), t_next, model_working_copy)
+        model_working_copy.callable_dt!(ud(t), t_next, model_working_copy)
 
     return true, t_next
 end
@@ -318,7 +389,7 @@ macro call_ct!(model, u)
 
         model_to_call = $(esc(model))
         (xc, yc, updated_state) =
-            model_to_call.callable_ct($(esc(u)), $(esc(:t)), model_to_call)
+            model_to_call.callable_ct!($(esc(u)), $(esc(:t)), model_to_call)
         yc
     end
 end
@@ -330,12 +401,12 @@ macro call_dt!(model, u)
 
         model_to_call = $(esc(model))
         (xd, yd, updated_state) =
-            model_to_call.callable_dt($(esc(u)), $(esc(:t)), model_to_call)
+            model_to_call.callable_dt!($(esc(u)), $(esc(:t)), model_to_call)
         yd
     end
 end
 
-function model_callable_ct(uc, t, model, model_working_copy, Δt)
+function model_callable_ct!(uc, t, model, model_working_copy, Δt)
     # TODO: print warning when calling a CT system from within a DT system
     xc_next = model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end]
     yc_next = model_working_copy.ycs === nothing ? nothing : model_working_copy.ycs[end]
@@ -412,7 +483,7 @@ function model_callable_ct(uc, t, model, model_working_copy, Δt)
     return (xc_next, yc_next, updated_state)
 end
 
-function model_callable_dt(ud, t, model, model_working_copy)
+function model_callable_dt!(ud, t, model, model_working_copy)
     @dt
     xd_next = model_working_copy.xds === nothing ? nothing : model_working_copy.xds[end]
     yd_next = model_working_copy.yds === nothing ? nothing : model_working_copy.yds[end]
@@ -615,7 +686,7 @@ end
 
 # wrapper for all continuous time integration methods
 function step_ct(fc, x, args...; integrator = RK4)
-    # TODO: implement support for other integrators, especially adaptive step and zero crossing detection
+    # TODO: implement support for other integrators, especially adaptive step
 
     if x === nothing
         return nothing # state-less system
@@ -636,6 +707,67 @@ end
 function step_dt(fd, x, u, p, t, submodel_tree)
     return length(submodel_tree) > 0 ? fd(x, u, p, t, models = submodel_tree) :
            fd(x, u, p, t)
+end
+
+export model_tree
+function model_tree(model)
+    function print_model(
+        model,
+        model_name,
+        depth;
+        last = false,
+        prev_groups_closed = [true for _ = 1:depth],
+    )
+        for i = 1:depth
+            if prev_groups_closed[i]
+                print(printSpace * printSpace)
+            else
+                print(printI * printSpace)
+            end
+        end
+        !last ? print(printT) : print(printL)
+        print(printLine)
+        println("$(model.model_id) ($(model.type)): $model_name ")
+    end
+
+    @quiet working_copy = init_working_copy(model, 0 // 1, 1 // 1, nothing, nothing) # TODO: passing nothings is not dimensional safe
+
+    # print depth first / FIFO
+    root_name = "$(Base.typename(typeof(model)).wrapper)"
+    root_name === "NamedTuple" ? "NamedTuple 'root'" : root_name
+    stack = Any[working_copy]
+    depth_stack = Int[0]
+    name_stack = String[root_name]
+    prev_groups_closed = []
+
+    while !isempty(stack)
+        node = pop!(stack)
+        node_depth = pop!(depth_stack)
+        node_name = pop!(name_stack)
+        last = isempty(stack) || depth_stack[1] != node_depth ? true : false
+
+        print_model(
+            node,
+            node_name,
+            node_depth,
+            last = last,
+            prev_groups_closed = prev_groups_closed,
+        )
+
+        length(node.models) > 0 ? push!(prev_groups_closed, last) :
+        (last ? pop!(prev_groups_closed) : nothing)
+        for (i, child) in enumerate(node.models)
+            node_name = "$(Base.typename(typeof(model)).wrapper)"
+            node_name =
+                node_name === "NamedTuple" ?
+                "NamedTuple '" * string(fieldnames(typeof(node.models))[i]) * "'" :
+                node_name
+            pushfirst!(name_stack, node_name)
+            pushfirst!(depth_stack, node_depth + 1)
+            pushfirst!(stack, child)
+        end
+    end
+    return nothing
 end
 
 end # module SimpleSim
