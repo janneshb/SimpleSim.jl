@@ -157,6 +157,11 @@ function init_working_copy(
         sub_tree = build_sub_tree(model.models)
     end
 
+    rng_dt =
+        hasproperty(model, :wd) &&
+        hasproperty(model, :wd_seed) &&
+        model.wd_seed !== nothing ? BASE_RNG(model.wd_seed) : BASE_RNG(model_id)
+
     xc0 =
         hasproperty(model, :xc0) && model.xc0 !== nothing ?
         (xc0 === nothing ? model.xc0 : xc0) : nothing
@@ -176,12 +181,11 @@ function init_working_copy(
     ud0 =
         uc0 === nothing ?
         (hasproperty(model, :ud0) && model.ud0 !== nothing ? model.ud0 : nothing) : ud0
+    wd0 = hasproperty(model, :wd) ? model.wd(xd0, ud0, model.p, t0, rng_dt) : nothing
+    yd_kwargs = length(sub_tree) > 0 ? (models = sub_tree,) : ()
+    yd_kwargs = hasproperty(model, :wd) ? (yd_kwargs..., w = wd0) : yd_kwargs
     yds0 =
-        !structure_only && hasproperty(model, :yd) && model.yd !== nothing ?
-        (
-            length(sub_tree) > 0 ? [model.yd(xd0, ud0, model.p, t0; models = sub_tree)] :
-            [model.yd(xd0, ud0, model.p, t0)]
-        ) : nothing
+        !structure_only && hasproperty(model, :yd) && model.yd !== nothing ? [model.yd(xd0, ud0, model.p, t0; yd_kwargs...)] : nothing
 
     type = begin
         temp_type = TypeUnknown::ModelType
@@ -195,11 +199,6 @@ function init_working_copy(
         end
         temp_type
     end
-
-    rng_dt =
-        hasproperty(model, :wd) &&
-        hasproperty(model, :wd_seed) &&
-        model.wd_seed !== nothing ? BASE_RNG(model.wd_seed) : BASE_RNG(model_id)
 
     return (
         name = model_name,
@@ -234,7 +233,7 @@ function init_working_copy(
               xd0 !== nothing ? [xd0] : nothing,
         yds = yds0,
         wds = !structure_only && hasproperty(model, :wd) ?
-              [model.wd(ud0, model.p, t0, rng_dt)] : nothing,
+              [model.wd(xd0, ud0, model.p, t0, rng_dt)] : nothing,
         rng_dt = rng_dt,
         models = sub_tree,
     )
@@ -513,12 +512,13 @@ function model_callable_dt!(ud, t, model, model_working_copy)
     @dt
     xd_next = model_working_copy.xds === nothing ? nothing : model_working_copy.xds[end]
     yd_next = model_working_copy.yds === nothing ? nothing : model_working_copy.yds[end]
+    wd_next = model_working_copy.wds === nothing ? nothing : model_working_copy.wds[end]
     submodels = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
 
     updated_state = false
     if due(model_working_copy, t)
         wd_next =
-            hasproperty(model, :wd) ? model.wd(ud, model.p, t, model_working_copy.rng_dt) :
+            hasproperty(model, :wd) ? model.wd(xd_next, ud, model.p, t, model_working_copy.rng_dt) :
             nothing
         xd_next = step_dt(
             model.fd,
@@ -527,10 +527,11 @@ function model_callable_dt!(ud, t, model, model_working_copy)
             model.p,
             t,
             submodels,
+            wd_next,
         )
-        yd_next =
-            length(submodels) > 0 ? model.yd(xd_next, ud, model.p, t; models = submodels) :
-            model.yd(xd_next, ud, model.p, t)
+        yd_kwargs = length(submodels) > 0 ? (models = submodels,) : ()
+        yd_kwargs = wd_next === nothing ? yd_kwargs : (yd_kwargs..., w = wd_next)
+        yd_next = model.yd(xd_next, ud, model.p, t; yd_kwargs...)
         update_working_copy_dt!(model_working_copy, t, xd_next, yd_next, wd_next)
         updated_state = true
     end
@@ -591,20 +592,6 @@ macro state_dt(model)
         $(esc(model)).xds[end]
     end
 end
-
-# Performs a random draw for this current model
-# TODO: this doesn't work yet. Is there any way to make it even work this way?
-#=
-export @draw
-macro draw()
-    quote
-        quote
-            local model_working_copy = $(esc($(esc(:this))))
-        end
-    end
-end
-=#
-
 
 ##############################
 #       Model Analysis       #
@@ -684,7 +671,6 @@ function find_min_Δt(model, Δt_prev)
     return gcd(Δt, check_rational(oneunit(Δt) * DEFAULT_Δt))
 end
 
-
 ###########################
 #       Integrators       #
 ###########################
@@ -729,7 +715,6 @@ end
 # wrapper for all continuous time integration methods
 function step_ct(fc, x, args...; integrator = RK4)
     # TODO: implement support for other integrators, especially adaptive step
-
     if x === nothing
         return nothing # state-less system
     end
@@ -746,12 +731,13 @@ function step_ct(fc, x, args...; integrator = RK4)
 end
 
 # steps a discrete time model
-function step_dt(fd, x, u, p, t, submodel_tree)
-    return length(submodel_tree) > 0 ? fd(x, u, p, t, models = submodel_tree) :
-           fd(x, u, p, t)
+function step_dt(fd, x, u, p, t, submodel_tree, wd)
+    fd_kwargs = length(submodel_tree) > 0 ? (models = submodel_tree,) : ()
+    fd_kwargs = wd === nothing ? fd_kwargs : (fd_kwargs..., w = wd)
+    return fd(x, u, p, t; fd_kwargs...)
 end
 
-export model_tree
+export model_tree, print_model_tree
 function model_tree(model)
     function print_model(
         model,
@@ -793,5 +779,5 @@ function model_tree(model)
     end
     return nothing
 end
-
+const print_model_tree = model_tree
 end # module SimpleSim
