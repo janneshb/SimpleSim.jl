@@ -5,6 +5,7 @@ import Base.push!, Base.@inline, Base.gcd
 
 global DEFAULT_Δt = 1 // 100 # default step size for CT systems, must be rational!
 global DEFAULT_zero_crossing_precision = 1e-6
+global RKF45_TOLERANCE = 1e-5
 global DEBUG = true
 global DISPLAY_PROGRESS = false
 global PROGRESS_SPACING = 1 // 1 # in the same unit as total time T
@@ -726,7 +727,6 @@ end
 # Runge-Kutta-Fehlberg method / RKF45
 # https://en.wikipedia.org/wiki/Runge–Kutta–Fehlberg_method
 function step_rkf45(fc, x, u, p, t, Δt, submodel_tree)
-    tol_Δt = 1e-5
     Δt = float(Δt)
     @safeguard_on
     _fc = length(submodel_tree) > 0 ? (x, u, p, t, models) -> fc(x, u, p, t; models = models) : (x, u, p, t, _) -> fc(x, u, p, t)
@@ -740,7 +740,7 @@ function step_rkf45(fc, x, u, p, t, Δt, submodel_tree)
     x_next_rk4 = x + 25 * k1 / 216 + 1408 * k3 / 2565 + 2197 * k4 / 4101 - k5 / 5
     x_next_rk5 = x + 16 * k1 / 135 + 6656 * k3 / 12825 + 25561 * k4 / 56430 - 9 * k5 / 50 + 2 * k6 / 55
 
-    s = (tol_Δt / (2 * sum(abs.(x_next_rk4 - x_next_rk5))))^(1/4)
+    s = (RKF45_TOLERANCE / (2 * sum(abs.(x_next_rk4 - x_next_rk5))))^(1/4)
     Δt_opt = rationalize(round(s * Δt, sigdigits=5))
     @safeguard_off
     return step_rk4(fc, x, u, p, t, Δt_opt, submodel_tree)
