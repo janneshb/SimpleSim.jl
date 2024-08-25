@@ -88,6 +88,8 @@ function init_working_copy(
     recursive = false,
     structure_only = false,
     fieldname = "top-level model",
+    integrator = RK4,
+    T = nothing,
 )
     function build_sub_tree(models::NamedTuple)
         return NamedTuple{keys(models)}((
@@ -102,6 +104,7 @@ function init_working_copy(
                     recursive = true,
                     structure_only = structure_only,
                     fieldname = ".$fieldname_i",
+                    T = T,
                 ) for (m_i, fieldname_i) in zip(models, fieldnames(typeof(models)))
             )...,
         ))
@@ -120,6 +123,7 @@ function init_working_copy(
                     recursive = true,
                     structure_only = structure_only,
                     fieldname = "($fieldname_i)",
+                    T = T,
                 ) for (m_i, fieldname_i) in zip(models, fieldnames(typeof(models)))
             )...,
         )
@@ -137,6 +141,7 @@ function init_working_copy(
                 recursive = true,
                 structure_only = structure_only,
                 fieldname = "[$i]",
+                T = T,
             ) for (i, m_i) in enumerate(models)
         ]
     end
@@ -206,10 +211,10 @@ function init_working_copy(
         type = type,
         callable_ct! = !structure_only ?
                        (u, t, model_working_copy) ->
-            model_callable_ct!(u, t, model, model_working_copy, Δt) : nothing,
+            model_callable_ct!(u, t, model, model_working_copy, Δt, integrator, T) : nothing,
         callable_dt! = !structure_only ?
                        (u, t, model_working_copy) ->
-            model_callable_dt!(u, t, model, model_working_copy) : nothing,
+            model_callable_dt!(u, t, model, model_working_copy, T) : nothing,
         Δt = !structure_only && hasproperty(model, :Δt) && model.Δt !== nothing ? model.Δt :
              Δt,
         zero_crossing_prec = !structure_only &&
@@ -240,7 +245,10 @@ function init_working_copy(
 end
 
 # adds an entry (tc, xc, yc) to the working copy of the model
-function update_working_copy_ct!(model_working_copy, t, xc, yc)
+function update_working_copy_ct!(model_working_copy, t, xc, yc, T)
+    if t > T
+        return
+    end
     push!(model_working_copy.tcs, eltype(model_working_copy.tcs)(t)) # always store the time if the model was called
     try
         xc !== nothing ? push!(model_working_copy.xcs, eltype(model_working_copy.xcs)(xc)) :
@@ -257,7 +265,10 @@ function update_working_copy_ct!(model_working_copy, t, xc, yc)
 end
 
 # adds an entry (td, xd, yd) to the working copy of the model
-function update_working_copy_dt!(model_working_copy, t, xd, yd, wd)
+function update_working_copy_dt!(model_working_copy, t, xd, yd, wd, T)
+    if t > T
+        return
+    end
     push!(model_working_copy.tds, eltype(model_working_copy.tds)(t)) # always store the time if the model was called
     try
         xd !== nothing ? push!(model_working_copy.xds, eltype(model_working_copy.xds)(xd)) :
@@ -350,6 +361,8 @@ function simulate(
         ud0 = ud(t0),
         xc0 = xc0,
         xd0 = xd0,
+        integrator = integrator,
+        T = T,
     ) # TODO: find better variable name for model_working_copy
 
     # simulate all systems that are due now
@@ -357,7 +370,7 @@ function simulate(
     simulation_is_running = true
     while simulation_is_running
         simulation_is_running, t =
-            loop!(model_working_copy, model, uc, ud, t, Δt_max, T, integrator)
+            loop!(model_working_copy, uc, ud, t, Δt_max, T)
     end
 
     DEBUG && println("Simulation has terminated.")
@@ -368,24 +381,23 @@ function simulate(
 end
 
 # the main simulation loop
-function loop!(model_working_copy, model, uc, ud, t, Δt_max, T, integrator)
+function loop!(model_working_copy, uc, ud, t, Δt_max, T)
     t_next = t + Δt_max
+    (Δt, xc, yc, updated_state_ct) =
+        model_working_copy.callable_ct!(uc(t), t_next, model_working_copy)
+    t_next = min(t_next, t + Δt)
+    (xd, yd, updated_state_dt) =
+        model_working_copy.callable_dt!(ud(t), t_next, model_working_copy)
 
-    if t_next > T # end criterion
+    if t_next > T # end of simulation
         return false, T
     end
 
     DEBUG &&
         DISPLAY_PROGRESS &&
-        div(t_next, PROGRESS_SPACING * oneunit(Δt_max)) !=
-        div(t_next - Δt_max, PROGRESS_SPACING * oneunit(Δt_max)) ?
+        div(t_next, PROGRESS_SPACING * oneunit(Δt)) !=
+        div(t_next - Δt, PROGRESS_SPACING * oneunit(Δt)) ?
     println("t = ", float(t_next)) : nothing
-
-    (xc, yc, updated_state_ct) =
-        model_working_copy.callable_ct!(uc(t), t_next, model_working_copy)
-
-    (xd, yd, updated_state_dt) =
-        model_working_copy.callable_dt!(ud(t), t_next, model_working_copy)
 
     return true, t_next
 end
@@ -431,7 +443,7 @@ macro call_dt!(model, u)
     end
 end
 
-function model_callable_ct!(uc, t, model, model_working_copy, Δt)
+function model_callable_ct!(uc, t, model, model_working_copy, Δt, integrator, T)
     # TODO: print warning when calling a CT system from within a DT system
     xc_next = model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end]
     yc_next = model_working_copy.ycs === nothing ? nothing : model_working_copy.ycs[end]
@@ -440,16 +452,17 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt)
     @ct
     updated_state = false
     if due(model_working_copy, t)
-        xc_next = step_ct(
+        xc_next, Δt_actual = step_ct(
             model.fc,
             model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end],
             uc,
             model.p,
             model_working_copy.tcs[end],
             Δt,
-            submodels,
+            submodels;
+            integrator = integrator
         )
-        t_next = model_working_copy.tcs[end] + Δt
+        t_next = model_working_copy.tcs[end] + Δt_actual
 
         if hasproperty(model, :zc) &&
            model.zc !== nothing &&
@@ -459,12 +472,12 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt)
             t_lower = model_working_copy.tcs[end]
             t_upper = t_next
 
-            # Run bisection until zero crossing precision is met
+            # Run bisection until zero crossing precision is met, always use RK4 for this
             while true
                 try
                     Δt_bi = (t_upper - t_lower) / 2
-                    xc_bi =
-                        step_ct(model.fc, xc_lower, uc, model.p, t_lower, Δt_bi, submodels)
+                    xc_bi, _ =
+                        step_ct(model.fc, xc_lower, uc, model.p, t_lower, Δt_bi, submodels; integrator = RK4)
                     zc_bi = model.zc(xc_bi, model.p, t_lower + Δt_bi)
 
                     if zc_bi < -model_working_copy.zero_crossing_prec / 2
@@ -490,25 +503,25 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt)
                 length(submodels) > 0 ?
                 model.yc(xc_next, uc, model.p, t_next; models = submodels) :
                 model.yc(xc_next, uc, model.p, t_next)
-            Δt_post_zc = model_working_copy.tcs[end] + Δt - t_next
-            update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next)
+            Δt_post_zc = model_working_copy.tcs[end] + Δt_actual - t_next
+            update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next, T)
 
             # fill in the remaining time of Δt to avoid Rational overflow in future iterations
-            xc_next = step_ct(model.fc, xc_next, uc, model.p, t_next, Δt_post_zc, submodels)
+            xc_next, _ = step_ct(model.fc, xc_next, uc, model.p, t_next, Δt_post_zc, submodels; integrator = RK4)
             t_next += Δt_post_zc
         end
         yc_next =
             length(submodels) > 0 ?
             model.yc(xc_next, uc, model.p, t_next; models = submodels) :
             model.yc(xc_next, uc, model.p, t_next)
-        update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next)
+        update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next, T)
         updated_state = true
     end
     @call_completed
-    return (xc_next, yc_next, updated_state)
+    return (Δt_actual, xc_next, yc_next, updated_state)
 end
 
-function model_callable_dt!(ud, t, model, model_working_copy)
+function model_callable_dt!(ud, t, model, model_working_copy, T)
     @dt
     xd_next = model_working_copy.xds === nothing ? nothing : model_working_copy.xds[end]
     yd_next = model_working_copy.yds === nothing ? nothing : model_working_copy.yds[end]
@@ -532,7 +545,7 @@ function model_callable_dt!(ud, t, model, model_working_copy)
         yd_kwargs = length(submodels) > 0 ? (models = submodels,) : ()
         yd_kwargs = wd_next === nothing ? yd_kwargs : (yd_kwargs..., w = wd_next)
         yd_next = model.yd(xd_next, ud, model.p, t; yd_kwargs...)
-        update_working_copy_dt!(model_working_copy, t, xd_next, yd_next, wd_next)
+        update_working_copy_dt!(model_working_copy, t, xd_next, yd_next, wd_next, T)
         updated_state = true
     end
     @call_completed
@@ -674,33 +687,31 @@ end
 ###########################
 #       Integrators       #
 ###########################
-export SimpleSimIntegrator, RK4, Euler, Heun
-@enum SimpleSimIntegrator RK4 = 1 Euler = 2 Heun = 3
+export SimpleSimIntegrator, RK4, Euler, Heun, RKF45
+@enum SimpleSimIntegrator RK4 = 1 Euler = 2 Heun = 3 RKF45 = 4
 
 # Fourth-order Runge-Kutta method
 # https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods
 function step_rk4(fc, x, u, p, t, Δt, submodel_tree)
     @safeguard_on
-    fc_wrapper(fc, x, u, p, t, models) =
-        length(models) > 0 ? fc(x, u, p, t; models = models) : fc(x, u, p, t)
-    k1 = fc_wrapper(fc, x, u, p, t, submodel_tree)
-    k2 = fc_wrapper(fc, x + k1 * Δt / 2, u, p, t + Δt / 2, submodel_tree)
-    k3 = fc_wrapper(fc, x + k2 * Δt / 2, u, p, t + Δt / 2, submodel_tree)
-    k4 = fc_wrapper(fc, x + k3 * Δt, u, p, t + Δt, submodel_tree)
+    _fc = length(submodel_tree) > 0 ? (x, u, p, t, models) -> fc(x, u, p, t; models = models) : (x, u, p, t, _) -> fc(x, u, p, t)
+    k1 = _fc(x, u, p, t, submodel_tree)
+    k2 = _fc(x + k1 * Δt / 2, u, p, t + Δt / 2, submodel_tree)
+    k3 = _fc(x + k2 * Δt / 2, u, p, t + Δt / 2, submodel_tree)
+    k4 = _fc(x + k3 * Δt, u, p, t + Δt, submodel_tree)
     @safeguard_off
-    return x + Δt * (k1 + 2 * k2 + 2 * k3 + k4) / 6
+    return x + Δt * (k1 + 2 * k2 + 2 * k3 + k4) / 6, Δt
 end
 
 # explicit trapezoidal rule / Heun's method
 # https://en.wikipedia.org/wiki/Heun%27s_method
 function step_heun(fc, x, u, p, t, Δt, submodel_tree)
     @safeguard_on
-    fc_wrapper(fc, x, u, p, t, models) =
-        length(models) > 0 ? fc(x, u, p, t; models = models) : fc(x, u, p, t)
-    k1 = fc_wrapper(fc, x, u, p, t, submodel_tree)
-    k2 = fc_wrapper(fc, x + k1 * Δt, u, p, t + Δt, submodel_tree)
+    _fc = length(submodel_tree) > 0 ? (x, u, p, t, models) -> fc(x, u, p, t; models = models) : (x, u, p, t, _) -> fc(x, u, p, t)
+    k1 = _fc(x, u, p, t, submodel_tree)
+    k2 = _fc(x + k1 * Δt, u, p, t + Δt, submodel_tree)
     @safeguard_off
-    return x + (k1 + k2) * Δt / 2
+    return x + (k1 + k2) * Δt / 2, Δt
 end
 
 # classic (forward) Euler method
@@ -709,7 +720,30 @@ function step_euler(fc, x, u, p, t, Δt, submodel_tree)
     @safeguard_on
     k = length(submodel_tree) > 0 ? fc(x, u, p, t, models = submodel_tree) : fc(x, u, p, t)
     @safeguard_off
-    return x + Δt * k
+    return x + Δt * k, Δt
+end
+
+# Runge-Kutta-Fehlberg method / RKF45
+# https://en.wikipedia.org/wiki/Runge–Kutta–Fehlberg_method
+function step_rkf45(fc, x, u, p, t, Δt, submodel_tree)
+    tol_Δt = 1e-5
+    Δt = float(Δt)
+    @safeguard_on
+    _fc = length(submodel_tree) > 0 ? (x, u, p, t, models) -> fc(x, u, p, t; models = models) : (x, u, p, t, _) -> fc(x, u, p, t)
+    k1 = Δt * _fc(x, u, p, t, submodel_tree)
+    k2 = Δt * _fc(x + k1 / 4, u, p, t + Δt / 4, submodel_tree)
+    k3 = Δt * _fc(x + 3 * k1 / 32 + 9 * k2 / 32, u, p, t + 3 * Δt / 8, submodel_tree)
+    k4 = Δt * _fc(x + 1932 * k1 / 2197 - 7200 * k2 / 2197 + 7296 * k3 / 2197, u, p, t + 12 * Δt / 13, submodel_tree)
+    k5 = Δt * _fc(x + 439 * k1 / 216 - 8 * k2 + 3680 * k3 / 513 - 845 * k4 / 4104, u, p, t + Δt, submodel_tree)
+    k6 = Δt * _fc(x - 8 * k1 / 27 + 2 * k2 - 3544 * k3 / 2565 + 1859 * k4 / 4104 - 11 * k5 / 40, u, p, t + Δt /2, submodel_tree)
+
+    x_next_rk4 = x + 25 * k1 / 216 + 1408 * k3 / 2565 + 2197 * k4 / 4101 - k5 / 5
+    x_next_rk5 = x + 16 * k1 / 135 + 6656 * k3 / 12825 + 25561 * k4 / 56430 - 9 * k5 / 50 + 2 * k6 / 55
+
+    s = (tol_Δt / (2 * sum(abs.(x_next_rk4 - x_next_rk5))))^(1/4)
+    Δt_opt = rationalize(round(s * Δt, sigdigits=5))
+    @safeguard_off
+    return step_rk4(fc, x, u, p, t, Δt_opt, submodel_tree)
 end
 
 # wrapper for all continuous time integration methods
@@ -725,6 +759,8 @@ function step_ct(fc, x, args...; integrator = RK4)
         return step_euler(fc, x, args...)
     elseif integrator == Heun
         return step_heun(fc, x, args...)
+    elseif integrator == RKF45
+        return step_rkf45(fc, x, args...)
     else
         @error "Integration method not supported."
     end

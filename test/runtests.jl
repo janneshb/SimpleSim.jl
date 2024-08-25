@@ -11,6 +11,8 @@ using Suppressor
         include("../examples/pendulum.jl")
         include("../examples/timing.jl")
         include("../examples/bouncing_ball.jl")
+        include("../examples/random_draws.jl")
+        include("../examples/adaptive_step.jl")
     end
 end
 
