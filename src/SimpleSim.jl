@@ -5,9 +5,9 @@ import Base.push!, Base.@inline, Base.gcd
 
 global DEFAULT_Δt = 1 // 100 # default step size for CT systems, must be rational!
 global DEFAULT_zero_crossing_precision = 1e-6
-global RKF45_TOLERANCE = 1e-3
+global RKF45_TOLERANCE = 1e-4
 global DEBUG = true
-global DISPLAY_PROGRESS = true
+global DISPLAY_PROGRESS = false
 global PROGRESS_SPACING = 1 // 1 # in the same unit as total time T
 global BASE_RNG = MersenneTwister
 
@@ -347,6 +347,13 @@ function simulate(
     # find smallest time-step
     Δt_max = find_min_Δt(model, Δt_max, Δt_max)
     DEBUG && println("Using Δt = $Δt_max for continuous-time models.")
+
+    # if RKF45 is used, times are kept as floats instead of Rationals to avoid overflow
+    if integrator == RKF45
+        T = float(T)
+        t0 = float(t0)
+        Δt_max = float(Δt_max)
+    end
 
     # process initial state, if given
     if x0 !== nothing
@@ -785,22 +792,22 @@ function step_rkf45(Δt, fc, x, u, p, t, submodel_tree)
             t + Δt / 2,
             submodel_tree,
         )
+    @safeguard_off
 
     x_next_rk4 = x + 25 * k1 / 216 + 1408 * k3 / 2565 + 2197 * k4 / 4101 - k5 / 5
     x_next_rk5 = x + 16 * k1 / 135 + 6656 * k3 / 12825 + 28561 * k4 / 56430 - 9 * k5 / 50 + 2 * k6 / 55
-    
-    truncation_error = max(abs.(x_next_rk4 - x_next_rk5)...)
-    
-    Δt_new = 0.9 * (RKF45_TOLERANCE / truncation_error)^(1/5) * Δt
-    Δt_new_rational = rationalize(round(Δt_new, sigdigits=4))
-    @safeguard_off
 
+    truncation_error = max(abs.(x_next_rk4 - x_next_rk5)...)
     if truncation_error > RKF45_TOLERANCE
-        return step_rkf45(Δt_new_rational, fc, x, u, p, t, submodel_tree)
-    else
-        # tolerance reached! Go with RK4 estimate
-        return x_next_rk4, rationalize(Δt)
+        Δt_min = 1e-9
+        Δt_new = 0.84 * (RKF45_TOLERANCE / truncation_error)^(1/4) * Δt
+        if Δt_new < Δt_min
+            return x_next_rk4, Δt
+        end
+        return step_rkf45(Δt_new, fc, x, u, p, t, submodel_tree)
     end
+    # tolerance reached! Go with RK4 estimate
+    return x_next_rk4, Δt # rationalize(Δt)
 end
 
 # wrapper for all continuous time integration methods
