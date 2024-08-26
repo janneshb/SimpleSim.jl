@@ -22,4 +22,4 @@ random_draws = (
     wd = wd_random_draws,
 )
 
-history = simulate(random_draws, T = 1//1) 
+history = simulate(random_draws, T = 1 // 1)

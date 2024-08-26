@@ -191,7 +191,8 @@ function init_working_copy(
     yd_kwargs = length(sub_tree) > 0 ? (models = sub_tree,) : ()
     yd_kwargs = hasproperty(model, :wd) ? (yd_kwargs..., w = wd0) : yd_kwargs
     yds0 =
-        !structure_only && hasproperty(model, :yd) && model.yd !== nothing ? [model.yd(xd0, ud0, model.p, t0; yd_kwargs...)] : nothing
+        !structure_only && hasproperty(model, :yd) && model.yd !== nothing ?
+        [model.yd(xd0, ud0, model.p, t0; yd_kwargs...)] : nothing
 
     type = begin
         temp_type = TypeUnknown::ModelType
@@ -212,7 +213,8 @@ function init_working_copy(
         type = type,
         callable_ct! = !structure_only ?
                        (u, t, model_working_copy) ->
-            model_callable_ct!(u, t, model, model_working_copy, Δt, integrator, T) : nothing,
+            model_callable_ct!(u, t, model, model_working_copy, Δt, integrator, T) :
+                       nothing,
         callable_dt! = !structure_only ?
                        (u, t, model_working_copy) ->
             model_callable_dt!(u, t, model, model_working_copy, T) : nothing,
@@ -370,8 +372,7 @@ function simulate(
     t = t0
     simulation_is_running = true
     while simulation_is_running
-        simulation_is_running, t =
-            loop!(model_working_copy, uc, ud, t, Δt_max, T)
+        simulation_is_running, t = loop!(model_working_copy, uc, ud, t, Δt_max, T)
     end
 
     DEBUG && println("Simulation has terminated.")
@@ -397,8 +398,8 @@ function loop!(model_working_copy, uc, ud, t, Δt_max, T)
     DEBUG &&
         DISPLAY_PROGRESS &&
         div(t_next, PROGRESS_SPACING * oneunit(Δt)) !=
-        div(t_next - Δt, PROGRESS_SPACING * oneunit(Δt)) ?
-    println("t = ", float(t_next)) : nothing
+        div(t_next - Δt, PROGRESS_SPACING * oneunit(Δt)) ? println("t = ", float(t_next)) :
+    nothing
 
     return true, t_next
 end
@@ -461,7 +462,7 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt, integrator, T
             model_working_copy.tcs[end],
             Δt,
             submodels;
-            integrator = integrator
+            integrator = integrator,
         )
         t_next = model_working_copy.tcs[end] + Δt_actual
 
@@ -477,8 +478,16 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt, integrator, T
             while true
                 try
                     Δt_bi = (t_upper - t_lower) / 2
-                    xc_bi, _ =
-                        step_ct(model.fc, xc_lower, uc, model.p, t_lower, Δt_bi, submodels; integrator = RK4)
+                    xc_bi, _ = step_ct(
+                        model.fc,
+                        xc_lower,
+                        uc,
+                        model.p,
+                        t_lower,
+                        Δt_bi,
+                        submodels;
+                        integrator = RK4,
+                    )
                     zc_bi = model.zc(xc_bi, model.p, t_lower + Δt_bi)
 
                     if zc_bi < -model_working_copy.zero_crossing_prec / 2
@@ -508,7 +517,16 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt, integrator, T
             update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next, T)
 
             # fill in the remaining time of Δt to avoid Rational overflow in future iterations
-            xc_next, _ = step_ct(model.fc, xc_next, uc, model.p, t_next, Δt_post_zc, submodels; integrator = RK4)
+            xc_next, _ = step_ct(
+                model.fc,
+                xc_next,
+                uc,
+                model.p,
+                t_next,
+                Δt_post_zc,
+                submodels;
+                integrator = RK4,
+            )
             t_next += Δt_post_zc
         end
         yc_next =
@@ -532,8 +550,8 @@ function model_callable_dt!(ud, t, model, model_working_copy, T)
     updated_state = false
     if due(model_working_copy, t)
         wd_next =
-            hasproperty(model, :wd) ? model.wd(xd_next, ud, model.p, t, model_working_copy.rng_dt) :
-            nothing
+            hasproperty(model, :wd) ?
+            model.wd(xd_next, ud, model.p, t, model_working_copy.rng_dt) : nothing
         xd_next = step_dt(
             model.fd,
             model_working_copy.xds === nothing ? nothing : model_working_copy.xds[end],
@@ -695,7 +713,10 @@ export SimpleSimIntegrator, RK4, Euler, Heun, RKF45
 # https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods
 function step_rk4(fc, x, u, p, t, Δt, submodel_tree)
     @safeguard_on
-    _fc = length(submodel_tree) > 0 ? (x, u, p, t, models) -> fc(x, u, p, t; models = models) : (x, u, p, t, _) -> fc(x, u, p, t)
+    _fc =
+        length(submodel_tree) > 0 ?
+        (x, u, p, t, models) -> fc(x, u, p, t; models = models) :
+        (x, u, p, t, _) -> fc(x, u, p, t)
     k1 = _fc(x, u, p, t, submodel_tree)
     k2 = _fc(x + k1 * Δt / 2, u, p, t + Δt / 2, submodel_tree)
     k3 = _fc(x + k2 * Δt / 2, u, p, t + Δt / 2, submodel_tree)
@@ -708,7 +729,10 @@ end
 # https://en.wikipedia.org/wiki/Heun%27s_method
 function step_heun(fc, x, u, p, t, Δt, submodel_tree)
     @safeguard_on
-    _fc = length(submodel_tree) > 0 ? (x, u, p, t, models) -> fc(x, u, p, t; models = models) : (x, u, p, t, _) -> fc(x, u, p, t)
+    _fc =
+        length(submodel_tree) > 0 ?
+        (x, u, p, t, models) -> fc(x, u, p, t; models = models) :
+        (x, u, p, t, _) -> fc(x, u, p, t)
     k1 = _fc(x, u, p, t, submodel_tree)
     k2 = _fc(x + k1 * Δt, u, p, t + Δt, submodel_tree)
     @safeguard_off
@@ -729,19 +753,45 @@ end
 function step_rkf45(fc, x, u, p, t, Δt, submodel_tree)
     Δt = float(Δt)
     @safeguard_on
-    _fc = length(submodel_tree) > 0 ? (x, u, p, t, models) -> fc(x, u, p, t; models = models) : (x, u, p, t, _) -> fc(x, u, p, t)
+    _fc =
+        length(submodel_tree) > 0 ?
+        (x, u, p, t, models) -> fc(x, u, p, t; models = models) :
+        (x, u, p, t, _) -> fc(x, u, p, t)
     k1 = Δt * _fc(x, u, p, t, submodel_tree)
     k2 = Δt * _fc(x + k1 / 4, u, p, t + Δt / 4, submodel_tree)
     k3 = Δt * _fc(x + 3 * k1 / 32 + 9 * k2 / 32, u, p, t + 3 * Δt / 8, submodel_tree)
-    k4 = Δt * _fc(x + 1932 * k1 / 2197 - 7200 * k2 / 2197 + 7296 * k3 / 2197, u, p, t + 12 * Δt / 13, submodel_tree)
-    k5 = Δt * _fc(x + 439 * k1 / 216 - 8 * k2 + 3680 * k3 / 513 - 845 * k4 / 4104, u, p, t + Δt, submodel_tree)
-    k6 = Δt * _fc(x - 8 * k1 / 27 + 2 * k2 - 3544 * k3 / 2565 + 1859 * k4 / 4104 - 11 * k5 / 40, u, p, t + Δt /2, submodel_tree)
+    k4 =
+        Δt * _fc(
+            x + 1932 * k1 / 2197 - 7200 * k2 / 2197 + 7296 * k3 / 2197,
+            u,
+            p,
+            t + 12 * Δt / 13,
+            submodel_tree,
+        )
+    k5 =
+        Δt * _fc(
+            x + 439 * k1 / 216 - 8 * k2 + 3680 * k3 / 513 - 845 * k4 / 4104,
+            u,
+            p,
+            t + Δt,
+            submodel_tree,
+        )
+    k6 =
+        Δt * _fc(
+            x - 8 * k1 / 27 + 2 * k2 - 3544 * k3 / 2565 + 1859 * k4 / 4104 - 11 * k5 / 40,
+            u,
+            p,
+            t + Δt / 2,
+            submodel_tree,
+        )
 
     x_next_rk4 = x + 25 * k1 / 216 + 1408 * k3 / 2565 + 2197 * k4 / 4101 - k5 / 5
-    x_next_rk5 = x + 16 * k1 / 135 + 6656 * k3 / 12825 + 25561 * k4 / 56430 - 9 * k5 / 50 + 2 * k6 / 55
+    x_next_rk5 =
+        x + 16 * k1 / 135 + 6656 * k3 / 12825 + 25561 * k4 / 56430 - 9 * k5 / 50 +
+        2 * k6 / 55
 
-    s = (RKF45_TOLERANCE / (2 * sum(abs.(x_next_rk4 - x_next_rk5))))^(1/4)
-    Δt_opt = rationalize(round(s * Δt, sigdigits=5))
+    s = (RKF45_TOLERANCE / (2 * sum(abs.(x_next_rk4 - x_next_rk5))))^(1 / 4)
+    Δt_opt = rationalize(round(s * Δt, sigdigits = 5))
     @safeguard_off
     return step_rk4(fc, x, u, p, t, Δt_opt, submodel_tree)
 end
