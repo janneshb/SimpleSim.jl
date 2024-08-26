@@ -1,7 +1,7 @@
 using SimpleSim
 using StaticArrays
 
-show_plots = true
+show_plots = false
 
 fc_adaptive_step(x, u, p, t) = 1 + x * x
 

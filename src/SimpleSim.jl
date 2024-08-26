@@ -427,7 +427,7 @@ macro call_ct!(model, u)
             @error "@call! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in umambiguous cases)."
 
         model_to_call = $(esc(model))
-        (xc, yc, updated_state) =
+        (Δt, xc, yc, updated_state) =
             model_to_call.callable_ct!($(esc(u)), $(esc(:t)), model_to_call)
         yc
     end
@@ -450,17 +450,18 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt, integrator, T
     xc_next = model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end]
     yc_next = model_working_copy.ycs === nothing ? nothing : model_working_copy.ycs[end]
     submodels = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
+    Δt_actual = Δt
 
     @ct
     updated_state = false
     if due(model_working_copy, t)
         xc_next, Δt_actual = step_ct(
+            Δt,
             model.fc,
             model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end],
             uc,
             model.p,
             model_working_copy.tcs[end],
-            Δt,
             submodels;
             integrator = integrator,
         )
@@ -479,12 +480,12 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt, integrator, T
                 try
                     Δt_bi = (t_upper - t_lower) / 2
                     xc_bi, _ = step_ct(
+                        Δt_bi,
                         model.fc,
                         xc_lower,
                         uc,
                         model.p,
                         t_lower,
-                        Δt_bi,
                         submodels;
                         integrator = RK4,
                     )
@@ -518,12 +519,12 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt, integrator, T
 
             # fill in the remaining time of Δt to avoid Rational overflow in future iterations
             xc_next, _ = step_ct(
+                Δt_post_zc,
                 model.fc,
                 xc_next,
                 uc,
                 model.p,
                 t_next,
-                Δt_post_zc,
                 submodels;
                 integrator = RK4,
             )
@@ -711,7 +712,7 @@ export SimpleSimIntegrator, RK4, Euler, Heun, RKF45
 
 # Fourth-order Runge-Kutta method
 # https://en.wikipedia.org/wiki/Runge%E2%80%93Kutta_methods
-function step_rk4(fc, x, u, p, t, Δt, submodel_tree)
+function step_rk4(Δt, fc, x, u, p, t, submodel_tree)
     @safeguard_on
     _fc =
         length(submodel_tree) > 0 ?
@@ -727,7 +728,7 @@ end
 
 # explicit trapezoidal rule / Heun's method
 # https://en.wikipedia.org/wiki/Heun%27s_method
-function step_heun(fc, x, u, p, t, Δt, submodel_tree)
+function step_heun(Δt, fc, x, u, p, t, submodel_tree)
     @safeguard_on
     _fc =
         length(submodel_tree) > 0 ?
@@ -741,7 +742,7 @@ end
 
 # classic (forward) Euler method
 # https://en.wikipedia.org/wiki/Euler_method
-function step_euler(fc, x, u, p, t, Δt, submodel_tree)
+function step_euler(Δt, fc, x, u, p, t, submodel_tree)
     @safeguard_on
     k = length(submodel_tree) > 0 ? fc(x, u, p, t, models = submodel_tree) : fc(x, u, p, t)
     @safeguard_off
@@ -750,7 +751,7 @@ end
 
 # Runge-Kutta-Fehlberg method / RKF45
 # https://en.wikipedia.org/wiki/Runge–Kutta–Fehlberg_method
-function step_rkf45(fc, x, u, p, t, Δt, submodel_tree)
+function step_rkf45(Δt, fc, x, u, p, t, submodel_tree)
     Δt = float(Δt)
     @safeguard_on
     _fc =
@@ -793,24 +794,24 @@ function step_rkf45(fc, x, u, p, t, Δt, submodel_tree)
     s = (RKF45_TOLERANCE / (2 * sum(abs.(x_next_rk4 - x_next_rk5))))^(1 / 4)
     Δt_opt = rationalize(round(s * Δt, sigdigits = 5))
     @safeguard_off
-    return step_rk4(fc, x, u, p, t, Δt_opt, submodel_tree)
+    return step_rk4(Δt_opt, fc, x, u, p, t, submodel_tree)
 end
 
 # wrapper for all continuous time integration methods
-function step_ct(fc, x, args...; integrator = RK4)
+function step_ct(Δt, fc, x, args...; integrator = RK4)
     # TODO: implement support for other integrators, especially adaptive step
     if x === nothing
-        return nothing # state-less system
+        return nothing, Δt # state-less system
     end
 
     if integrator == RK4
-        return step_rk4(fc, x, args...)
+        return step_rk4(Δt, fc, x, args...)
     elseif integrator == Euler
-        return step_euler(fc, x, args...)
+        return step_euler(Δt, fc, x, args...)
     elseif integrator == Heun
-        return step_heun(fc, x, args...)
+        return step_heun(Δt, fc, x, args...)
     elseif integrator == RKF45
-        return step_rkf45(fc, x, args...)
+        return step_rkf45(Δt, fc, x, args...)
     else
         @error "Integration method not supported."
     end

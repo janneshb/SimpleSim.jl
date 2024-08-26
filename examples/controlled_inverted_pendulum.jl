@@ -24,7 +24,6 @@ function fc_inv_pendulum(x, u, p, t)
     # | m*ddz - m*l2*ddθ*cos(θ) + m*l2*dθ*dθ*sin(θ) = u
     # | l*ddθ - g*sin(θ) = ddz*cos(θ)
     #
-
     ddz = (u / m - g * s_θ * c_θ - l2 * dθ * dθ * s_θ) / (1 + c_θ * c_θ)
     ddθ = (ddz * c_θ + g * s_θ) / l
     return SVector(dz, ddz, dθ, ddθ)
@@ -53,7 +52,7 @@ end
 controller = (
     p = (k_p = 1.0, k_i = 0.1),
     xc0 = SVector(zeros(2)...),
-    uc0 = SVector(zeros(2)...),
+    uc0 = 0.0,
     fc = fc_controls,
     yc = yc_controls,
 )
