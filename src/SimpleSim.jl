@@ -5,9 +5,9 @@ import Base.push!, Base.@inline, Base.gcd
 
 global DEFAULT_Δt = 1 // 100 # default step size for CT systems, must be rational!
 global DEFAULT_zero_crossing_precision = 1e-6
-global RKF45_TOLERANCE = 1e-5
+global RKF45_TOLERANCE = 1e-3
 global DEBUG = true
-global DISPLAY_PROGRESS = false
+global DISPLAY_PROGRESS = true
 global PROGRESS_SPACING = 1 // 1 # in the same unit as total time T
 global BASE_RNG = MersenneTwister
 
@@ -331,7 +331,7 @@ function simulate(
     T,
     uc = (t) -> nothing,
     ud = (t) -> nothing,
-    Δt_max = T,
+    Δt_max = DEFAULT_Δt,
     t0 = 0 // 1 * oneunit(T),
     xc0 = nothing, # note: this is only valid for the top-level model. Also helpful if a stand-alone model is simulated
     xd0 = nothing,
@@ -345,7 +345,7 @@ function simulate(
     t0 = check_rational(t0)
 
     # find smallest time-step
-    Δt_max = find_min_Δt(model, Δt_max)
+    Δt_max = find_min_Δt(model, Δt_max, Δt_max)
     DEBUG && println("Using Δt = $Δt_max for continuous-time models.")
 
     # process initial state, if given
@@ -690,7 +690,7 @@ function due(model, t)
 end
 
 # finds the minimum step size across all models and submodels (recursively)
-function find_min_Δt(model, Δt_prev)
+function find_min_Δt(model, Δt_prev, Δt_max)
     Δt = Δt_prev
     if hasproperty(model, :Δt) && model.Δt !== nothing
         Δt = gcd(Δt, check_rational(model.Δt))
@@ -698,10 +698,10 @@ function find_min_Δt(model, Δt_prev)
 
     if hasproperty(model, :models) && model.models !== nothing
         for m_i in model.models
-            Δt = find_min_Δt(m_i, Δt)
+            Δt = find_min_Δt(m_i, Δt, Δt_max)
         end
     end
-    return gcd(Δt, check_rational(oneunit(Δt) * DEFAULT_Δt))
+    return gcd(Δt, check_rational(oneunit(Δt) * Δt_max))
 end
 
 ###########################
@@ -787,14 +787,20 @@ function step_rkf45(Δt, fc, x, u, p, t, submodel_tree)
         )
 
     x_next_rk4 = x + 25 * k1 / 216 + 1408 * k3 / 2565 + 2197 * k4 / 4101 - k5 / 5
-    x_next_rk5 =
-        x + 16 * k1 / 135 + 6656 * k3 / 12825 + 25561 * k4 / 56430 - 9 * k5 / 50 +
-        2 * k6 / 55
-
-    s = (RKF45_TOLERANCE / (2 * sum(abs.(x_next_rk4 - x_next_rk5))))^(1 / 4)
-    Δt_opt = rationalize(round(s * Δt, sigdigits = 5))
+    x_next_rk5 = x + 16 * k1 / 135 + 6656 * k3 / 12825 + 28561 * k4 / 56430 - 9 * k5 / 50 + 2 * k6 / 55
+    
+    truncation_error = max(abs.(x_next_rk4 - x_next_rk5)...)
+    
+    Δt_new = 0.9 * (RKF45_TOLERANCE / truncation_error)^(1/5) * Δt
+    Δt_new_rational = rationalize(round(Δt_new, sigdigits=4))
     @safeguard_off
-    return step_rk4(Δt_opt, fc, x, u, p, t, submodel_tree)
+
+    if truncation_error > RKF45_TOLERANCE
+        return step_rkf45(Δt_new_rational, fc, x, u, p, t, submodel_tree)
+    else
+        # tolerance reached! Go with RK4 estimate
+        return x_next_rk4, rationalize(Δt)
+    end
 end
 
 # wrapper for all continuous time integration methods
