@@ -5,8 +5,9 @@
 - [x] Make sure the data is output as matrices and not a vector of vectors
 - [x] Check support for vector submodels
 - [ ] Write (proper) Julia tests
-- [ ] Implement random draw hook that is invariant to model structure
-- [ ] Zero-crossing detection / bouncing ball example
+- [x] Implement random draw hook that is invariant to model structure
+- [x] Zero-crossing detection / bouncing ball example
+- [ ] Finish implementing `RKF45`. Current version doesn't work for three-body problem and doesn't support nested models.
 - [ ] Make public
 
 
@@ -20,8 +21,6 @@ Multiple demos in the `exanmples/` provide a rough but incomplete overview of wh
 
 
 ## Credit
-
-
 
 A similar simulation architecture was proposed by [@tuckermcclure](https://www.github.com/tuckermcclure) in [overdot-sandbox](https://github.com/tuckermcclure/overdot-sandbox).
 
