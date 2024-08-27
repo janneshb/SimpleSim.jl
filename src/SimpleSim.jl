@@ -402,7 +402,14 @@ function loop!(model_working_copy, uc, ud, t, Δt_max, T)
         return false, T
     end
 
-    DEBUG && DISPLAY_PROGRESS && div(t_next, PROGRESS_SPACING * oneunit(Δt)) != div(t_next - Δt, PROGRESS_SPACING * oneunit(Δt)) ? println("t = ", round(float(t_next), digits = max(-floor(Int, log10(PROGRESS_SPACING)), 0))) : nothing
+    DEBUG &&
+        DISPLAY_PROGRESS &&
+        div(t_next, PROGRESS_SPACING * oneunit(Δt)) !=
+        div(t_next - Δt, PROGRESS_SPACING * oneunit(Δt)) ?
+    println(
+        "t = ",
+        round(float(t_next), digits = max(-floor(Int, log10(PROGRESS_SPACING)), 0)),
+    ) : nothing
     return true, t_next
 end
 
@@ -790,13 +797,15 @@ function step_rkf45(Δt, fc, x, u, p, t, submodel_tree)
     @safeguard_off
 
     x_next_rk4 = x + 25 * k1 / 216 + 1408 * k3 / 2565 + 2197 * k4 / 4101 - k5 / 5
-    x_next_rk5 = x + 16 * k1 / 135 + 6656 * k3 / 12825 + 28561 * k4 / 56430 - 9 * k5 / 50 + 2 * k6 / 55
+    x_next_rk5 =
+        x + 16 * k1 / 135 + 6656 * k3 / 12825 + 28561 * k4 / 56430 - 9 * k5 / 50 +
+        2 * k6 / 55
 
     truncation_error = max(abs.(x_next_rk4 - x_next_rk5)...)
-    abs_tol = RKF45_REL_TOLERANCE * sqrt(sum(abs.(x_next_rk5).^2))
+    abs_tol = RKF45_REL_TOLERANCE * sqrt(sum(abs.(x_next_rk5) .^ 2))
     if truncation_error > abs_tol
         Δt_min = 1e-8 # TODO: move this to somewhere, where it is configurable
-        Δt_new = 0.84 * (abs_tol / truncation_error)^(1/4) * Δt
+        Δt_new = 0.84 * (abs_tol / truncation_error)^(1 / 4) * Δt
         if Δt_new < Δt_min
             @warn "Reached a time step length of $Δt_new. Your problem seems to be very stiff."
             return x_next_rk4, Δt # This step is not converging

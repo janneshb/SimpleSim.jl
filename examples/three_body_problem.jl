@@ -7,16 +7,17 @@ function fc_three_bodies(x, u, p, t)
     r1 = x[1:2]
     r2 = x[3:4]
     r3 = x[5:6]
-    r_1_dd = - p.G * p.m2 * (r1 - r2) / (norm(r1 - r2)^2) - p.G * p.m3 * (r1 - r3) / (norm(r1 - r3)^2)
-    r_2_dd = - p.G * p.m3 * (r2 - r3) / (norm(r2 - r3)^2) - p.G * p.m1 * (r2 - r1) / (norm(r2 - r1)^2)
-    r_3_dd = - p.G * p.m1 * (r3 - r2) / (norm(r3 - r2)^2) - p.G * p.m2 * (r3 - r2) / (norm(r3 - r2)^2)
+    r_1_dd =
+        -p.G * p.m2 * (r1 - r2) / (norm(r1 - r2)^2) -
+        p.G * p.m3 * (r1 - r3) / (norm(r1 - r3)^2)
+    r_2_dd =
+        -p.G * p.m3 * (r2 - r3) / (norm(r2 - r3)^2) -
+        p.G * p.m1 * (r2 - r1) / (norm(r2 - r1)^2)
+    r_3_dd =
+        -p.G * p.m1 * (r3 - r2) / (norm(r3 - r2)^2) -
+        p.G * p.m2 * (r3 - r2) / (norm(r3 - r2)^2)
 
-    return vcat(
-        x[7:end],
-        r_1_dd,
-        r_2_dd,
-        r_3_dd
-    )
+    return vcat(x[7:end], r_1_dd, r_2_dd, r_3_dd)
 end
 
 function yc_three_bodies(x, u, p, t)
@@ -24,7 +25,8 @@ function yc_three_bodies(x, u, p, t)
 end
 
 r0 = 1e7
-x0 = vcat([
+x0 = vcat(
+    [
         r0 * cosd(0),
         r0 * sind(0),
         r0 * cosd(120),
@@ -36,12 +38,7 @@ x0 = vcat([
 )
 
 three_bodies = (
-    p = (
-        G = 6.67430e-11,
-        m1 = 5e24,
-        m2 = 5e24,
-        m3 = 5e24,
-    ),
+    p = (G = 6.67430e-11, m1 = 5e24, m2 = 5e24, m3 = 5e24),
     xc0 = x0,
     fc = fc_three_bodies,
     yc = yc_three_bodies,
@@ -64,14 +61,8 @@ if show_plots
         xlabel = "x",
         ylabel = "y",
     )
-    plot!(
-        r2_traj[:, 1],
-        r2_traj[:, 2],
-    )
-    plot!(
-        r3_traj[:, 1],
-        r3_traj[:, 2],
-    )
+    plot!(r2_traj[:, 1], r2_traj[:, 2])
+    plot!(r3_traj[:, 1], r3_traj[:, 2])
     display(p1)
 
     p2 = plot(
@@ -83,20 +74,8 @@ if show_plots
     )
     display(p2)
 
-    p2 = plot(
-        out.tcs,
-        r1_traj[:, 1],
-        name="r1"
-    )
-    plot!(
-        out.tcs,
-        r2_traj[:, 1],
-        name="r2"
-    )
-    plot!(
-        out.tcs,
-        r3_traj[:, 1],
-        name="r3"
-    )
+    p2 = plot(out.tcs, r1_traj[:, 1], name = "r1")
+    plot!(out.tcs, r2_traj[:, 1], name = "r2")
+    plot!(out.tcs, r3_traj[:, 1], name = "r3")
     display(p2)
 end
