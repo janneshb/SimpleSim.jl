@@ -7,7 +7,8 @@
 - [ ] Write (proper) Julia tests
 - [x] Implement random draw hook that is invariant to model structure
 - [x] Zero-crossing detection / bouncing ball example
-- [ ] Finish implementing `RKF45`. Current version doesn't work for three-body problem and doesn't support nested models.
+- [x] Finish implementing `RKF45` for three body problem.
+- [ ] Implement `RKF45` for nested models
 - [ ] Make public
 
 

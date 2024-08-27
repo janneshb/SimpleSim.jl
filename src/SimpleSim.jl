@@ -809,7 +809,6 @@ end
 
 # wrapper for all continuous time integration methods
 function step_ct(Δt, fc, x, args...; integrator = RK4)
-    # TODO: implement support for other integrators, especially adaptive step
     if x === nothing
         return nothing, Δt # state-less system
     end
