@@ -762,6 +762,7 @@ end
 
 # Runge-Kutta-Fehlberg method / RKF45
 # https://en.wikipedia.org/wiki/Runge–Kutta–Fehlberg_method
+# https://maths.cnam.fr/IMG/pdf/RungeKuttaFehlbergProof.pdf
 function step_rkf45(Δt, fc, x, u, p, t, submodel_tree)
     Δt = float(Δt)
     @safeguard_on
