@@ -45,5 +45,6 @@ history = simulate(pendulum_hybrid, T = T, uc = u, ud = u)
 
 if show_plots
     using Plots
+    plotlyjs()
     plot(history.tcs, history.ycs[:, 1])
 end

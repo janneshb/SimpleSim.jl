@@ -32,5 +32,6 @@ history = simulate(pendulum_discrete, T = T, ud = u)
 
 if show_plots
     using Plots
+    plotlyjs()
     plot(history.tds, history.yds[:, 1], seriestype = :steppost)
 end

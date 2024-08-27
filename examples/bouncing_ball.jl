@@ -31,6 +31,7 @@ history = simulate(bouncing_ball, T = T, integrator = RK4)
 
 if show_plots
     using Plots
+    plotlyjs()
     p1 = plot(
         history.xcs[:, 1],
         history.xcs[:, 2],

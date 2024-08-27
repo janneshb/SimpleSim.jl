@@ -24,6 +24,7 @@ out_rkf45 = simulate(stiff_ivp, T = T, Δt_max = Δt, integrator = RKF45)
 
 if show_plots
     using Plots
+    plotlyjs()
     p1 = plot(out_euler.tcs, out_euler.xcs, xlabel = "t", ylabel = "x", name = "Euler")
     plot!(out_heun.tcs, out_heun.xcs, name = "Heun")
     plot!(out_rk4.tcs, out_rk4.xcs, name = "RK4")

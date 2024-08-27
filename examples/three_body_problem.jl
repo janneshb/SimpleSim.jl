@@ -54,6 +54,7 @@ r3_traj = out.xcs[:, 5:6]
 
 if show_plots
     using Plots
+    plotlyjs()
     p1 = plot(
         r1_traj[:, 1],
         r1_traj[:, 2],

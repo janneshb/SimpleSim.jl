@@ -76,6 +76,7 @@ history = simulate(wrapper, T = 3 // 1)
 
 if show_plots
     using Plots
+    plotlyjs()
     plot(
         history.models.inner_hybrid.tcs,
         history.models.inner_hybrid.ycs,

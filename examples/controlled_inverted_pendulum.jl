@@ -93,5 +93,6 @@ println()
 
 if show_plots
     using Plots
+    plotlyjs()
     plot(history.tcs, history.ycs[:, 1])
 end
