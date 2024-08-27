@@ -13,6 +13,8 @@ using Suppressor
         include("../examples/bouncing_ball.jl")
         include("../examples/random_draws.jl")
         include("../examples/adaptive_step.jl")
+        include("../examples/stiff_ivp.jl")
+        include("../examples/three_body_problem.jl")
     end
 end
 

@@ -5,7 +5,7 @@ import Base.push!, Base.@inline, Base.gcd
 
 global DEFAULT_Δt = 1 // 100 # default step size for CT systems, must be rational!
 global DEFAULT_zero_crossing_precision = 1e-6
-global RKF45_TOLERANCE = 1e-4
+global RKF45_REL_TOLERANCE = 1e-6
 global DEBUG = true
 global DISPLAY_PROGRESS = false
 global PROGRESS_SPACING = 1 // 1 # in the same unit as total time T
@@ -402,12 +402,7 @@ function loop!(model_working_copy, uc, ud, t, Δt_max, T)
         return false, T
     end
 
-    DEBUG &&
-        DISPLAY_PROGRESS &&
-        div(t_next, PROGRESS_SPACING * oneunit(Δt)) !=
-        div(t_next - Δt, PROGRESS_SPACING * oneunit(Δt)) ? println("t = ", float(t_next)) :
-    nothing
-
+    DEBUG && DISPLAY_PROGRESS && div(t_next, PROGRESS_SPACING * oneunit(Δt)) != div(t_next - Δt, PROGRESS_SPACING * oneunit(Δt)) ? println("t = ", round(float(t_next), digits = max(-floor(Int, log10(PROGRESS_SPACING)), 0))) : nothing
     return true, t_next
 end
 
@@ -798,11 +793,13 @@ function step_rkf45(Δt, fc, x, u, p, t, submodel_tree)
     x_next_rk5 = x + 16 * k1 / 135 + 6656 * k3 / 12825 + 28561 * k4 / 56430 - 9 * k5 / 50 + 2 * k6 / 55
 
     truncation_error = max(abs.(x_next_rk4 - x_next_rk5)...)
-    if truncation_error > RKF45_TOLERANCE
-        Δt_min = 1e-9
-        Δt_new = 0.84 * (RKF45_TOLERANCE / truncation_error)^(1/4) * Δt
+    abs_tol = RKF45_REL_TOLERANCE * sqrt(sum(abs.(x_next_rk5).^2))
+    if truncation_error > abs_tol
+        Δt_min = 1e-8 # TODO: move this to somewhere, where it is configurable
+        Δt_new = 0.84 * (abs_tol / truncation_error)^(1/4) * Δt
         if Δt_new < Δt_min
-            return x_next_rk4, Δt
+            @warn "Reached a time step length of $Δt_new. Your problem seems to be very stiff."
+            return x_next_rk4, Δt # This step is not converging
         end
         return step_rkf45(Δt_new, fc, x, u, p, t, submodel_tree)
     end
