@@ -11,6 +11,12 @@
 - [ ] Implement `RKF45` for nested models
 - [ ] Introduce simulation parameters storing things such as `Delta t_max`, `RKF45_REL_TOLERANCE` etc
 - [ ] Implement `@log` macro for easy access to variables that aren't state or output
+- [ ] Need better `@warn` and `@error`. Stuff is hard to debug at the moment
+- [ ] Make parameters `p` optional (just pass `nothing`)
+- [ ] Add init hook that can alter `p` and is called before the simulation runs
+- [ ] Add terminate hook (for example to close opened files) that is run after simulation finishes
+- [ ] Break up the project into different files (e.g. the solvers and macros can have their own file)
+
 - [ ] Make public
 
 
