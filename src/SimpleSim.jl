@@ -457,7 +457,11 @@ macro call_dt!(model, u)
 end
 
 function model_callable_ct!(uc, t, model, model_working_copy, Δt, integrator, T)
-    # TODO: print warning when calling a CT system from within a DT system
+    context = @context # Warn if we are still in DT context
+    if context === ContextDT::SimulationContext
+        @warn "You are calling a CT model (id $(model_working_copy.model_id)) from within a DT model. This should not be done and will lead to unexpected results"
+    end
+
     xc_next = model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end]
     yc_next = model_working_copy.ycs === nothing ? nothing : model_working_copy.ycs[end]
     submodels = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
