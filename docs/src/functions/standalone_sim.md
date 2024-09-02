@@ -4,9 +4,13 @@
 
 ### Dynamics Model
 
+The `SimpleSim.jl` equivalent of the first-order ordinary differential equation
+
 ```math
 \dot{x}(t) = f(x(t), u(t), p, t)
 ```
+
+is to define a function that returns the current derivative
 
 ```julia
 function fc_my_model(x, u, p, t)
@@ -14,6 +18,8 @@ function fc_my_model(x, u, p, t)
     return my_x_derivative
 end
 ```
+
+Implicit differential equations $0 = F(\dot{x}, x, u, p, t)$ are not supported.
 
 ### Measurement Model
 
