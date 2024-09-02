@@ -7,7 +7,7 @@ pages = [
         "Continuous-Time Models" => "overview/ct_sims.md",
         "Discrete-Time Models" => "overview/dt_sims.md",
         "Nested Models" => "overview/nested_sims.md",
-        "Running Simulations" => "overview/run_sims.md",
+        "Simulating Models" => "overview/run_sims.md",
         "Interpreting Output" => "overview/output.md",
     ],
     "Examples" => [
@@ -16,7 +16,7 @@ pages = [
         "Feedback Control" => "examples/feedback_control.md",
         "Random Walk" => "examples/random_walk.md",
     ],
-    "All Functionalities" => [
+    "Running Simulations" => [
         "Standalone Simulations" => "functions/standalone_sim.md",
         "Nested Simulations" => "functions/nested_sim.md",
         "Random Variables" => "functions/random_vars.md",
