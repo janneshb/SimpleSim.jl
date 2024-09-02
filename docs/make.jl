@@ -1,7 +1,39 @@
 using Documenter
 using SimpleSim
 
-pages = ["Introduction" => "index.md", "Overview" => "overview.md"]
+pages = [
+    "Introduction" => "index.md",
+    "Overview" => [
+        "Continuous-Time Models" => "overview/ct_sims.md",
+        "Discrete-Time Models" => "overview/dt_sims.md",
+        "Nested Models" => "overview/nested_sims.md",
+        "Running Simulations" => "overview/run_sims.md",
+        "Interpreting Output" => "overview/output.md",
+    ],
+    "Examples" => [
+        "Minimal Example" => "examples/minimal_example.md",
+        "Bouncing Ball" => "examples/bouncing_ball.md",
+        "Feedback Control" => "examples/feedback_control.md",
+        "Random Walk" => "examples/random_walk.md",
+    ],
+    "All Functionalities" => [
+        "Standalone Simulations" => "functions/standalone_sim.md",
+        "Nested Simulations" => "functions/nested_sim.md",
+        "Random Variables" => "functions/random_vars.md",
+        "Zero-Crossing Detection" => "functions/zero_crossing.md",
+    ],
+    "Output Handling" => [
+        "Simulation Output" => "output/simulation_output.md",
+        "`@log` macro" => "output/log.md",
+    ],
+    "Integrators" => [
+        "Euler" => "integrators/euler.md",
+        "Heun" => "integrators/heun.md",
+        "4th Order Runge-Kutta" => "integrators/rk4.md",
+        "Runge-Kutta-Fehlberg" => "integrators/rkf45.md",
+    ],
+    "Miscellaneous" => "misc.md",
+]
 
 println("Making Documentation...")
 makedocs(

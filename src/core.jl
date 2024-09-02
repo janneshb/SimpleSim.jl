@@ -1,4 +1,9 @@
 export simulate
+"""
+    simulate(model)
+
+Simulates the model.
+"""
 function simulate(
     model;
     T,
@@ -30,7 +35,7 @@ function simulate(
 
     # process initial state, if given
     if x0 !== nothing
-        @assert xc0 === nothing && xd0 === nothing
+        xc0 === nothing && xd0 === nothing && @error "If `x0` is given to `simulate`, `xc0` and `xd0` must not be given to avoid ambiguity."
         xd0 = x0
         xc0 = x0
     end
@@ -89,7 +94,6 @@ end
 # Calls a model (runs it, if its due) and returns its output. Should be used within yc and yd.
 export @call!, @call_ct!, @call_dt!
 macro call!(model, u)
-    # TODO: there is a way to simplify this
     quote
         model_to_call = $(esc(model))
         t = $(esc(:t))

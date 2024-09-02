@@ -91,7 +91,7 @@ function init_working_copy(
 
     xc0 =
         hasproperty(model, :xc0) && model.xc0 !== nothing ?
-        (xc0 === nothing ? model.xc0 : xc0) : nothing
+        (xc0 === nothing ? model.xc0 : xc0) : xc0
     uc0 =
         uc0 === nothing ?
         (hasproperty(model, :uc0) && model.uc0 !== nothing ? model.uc0 : nothing) : uc0
@@ -104,7 +104,7 @@ function init_working_copy(
 
     xd0 =
         hasproperty(model, :xd0) && model.xd0 !== nothing ?
-        (xd0 === nothing ? model.xd0 : xd0) : nothing
+        (xd0 === nothing ? model.xd0 : xd0) : xd0
     ud0 =
         uc0 === nothing ?
         (hasproperty(model, :ud0) && model.ud0 !== nothing ? model.ud0 : nothing) : ud0
