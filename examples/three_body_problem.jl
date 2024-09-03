@@ -4,7 +4,7 @@ using LinearAlgebra
 show_plots = false
 
 include("utils/zoh.jl")
-show_plots && include("utils/recipes.jl")
+include("utils/recipes.jl")
 
 
 function fc_three_bodies(x, u, p, t)
@@ -225,6 +225,7 @@ if show_plots
     r3 = r_zoh[:, 5:6]
 
     line_info_dark = (line_info..., color = stroke_color_dark)
+    println("animate")
     anim = @animate for i ∈ 1:n
         logoanimation(i, r1, horizon, plot_info, line_info_dark, planet_1_info)
         logoanimation!(i, r2, horizon, plot_info, line_info_dark, planet_2_info)
@@ -241,6 +242,7 @@ if show_plots
     gif(anim, "docs/src/assets/logo-dark.gif", fps = fps_logo)
 
     line_info_light = (line_info..., color = stroke_color)
+    println("animate 2")
     anim = @animate for i ∈ 1:n
         logoanimation(i, r1, horizon, plot_info, line_info_light, planet_1_info)
         logoanimation!(i, r2, horizon, plot_info, line_info_light, planet_2_info)
