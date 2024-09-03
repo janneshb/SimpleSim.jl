@@ -11,7 +11,6 @@ using Plots
     axis --> ([], false)
     legend --> false
 
-    heigth --> 500
     width --> 500
     x_lims --> plot_info.x_lims
     y_lims --> plot_info.y_lims
@@ -27,7 +26,7 @@ using Plots
 
     @series begin
         seriestype := :scatter
-        markerstrokecolor --> planet_info.markerstrokecolor
+        markerstrokewidth --> 0
         markersize --> planet_info.markersize
         markercolor --> planet_info.markercolor
         r[idx[end], 1:1], r[idx[end], 2:2]
