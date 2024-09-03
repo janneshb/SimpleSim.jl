@@ -3,6 +3,10 @@ using LinearAlgebra
 
 show_plots = false
 
+include("utils/zoh.jl")
+show_plots && include("utils/recipes.jl")
+
+
 function fc_three_bodies(x, u, p, t)
     r1 = x[1:2]
     r2 = x[3:4]
@@ -50,7 +54,7 @@ three_bodies = (
     yc = yc_three_bodies,
 )
 
-T = 15 // 1
+T = 27 // 1
 out = simulate(three_bodies, T = T, integrator = RKF45)
 
 r1_traj = out.xcs[:, 1:2]
@@ -103,30 +107,48 @@ if show_plots
         legend = false,
     )
 
-    plot!(p_logo_dark, r1_traj[:, 1], r1_traj[:, 2], color = "#eee", linewidth = strokewidth)
-    plot!(p_logo_dark, r2_traj[:, 1], r2_traj[:, 2], color = "#eee", linewidth = strokewidth)
-    plot!(p_logo_dark, r3_traj[:, 1], r3_traj[:, 2], color = "#eee", linewidth = strokewidth)
+    plot!(
+        p_logo_dark,
+        r1_traj[:, 1],
+        r1_traj[:, 2],
+        color = "#eee",
+        linewidth = strokewidth,
+    )
+    plot!(
+        p_logo_dark,
+        r2_traj[:, 1],
+        r2_traj[:, 2],
+        color = "#eee",
+        linewidth = strokewidth,
+    )
+    plot!(
+        p_logo_dark,
+        r3_traj[:, 1],
+        r3_traj[:, 2],
+        color = "#eee",
+        linewidth = strokewidth,
+    )
 
     scatter!(
         p_logo_dark,
-        [r1_traj[1, 1]],
-        [r1_traj[1, 2]],
+        [r1_traj[end, 1]],
+        [r1_traj[end, 2]],
         markerstrokecolor = "#eee",
         markercolor = julia_green,
         markersize = markersize,
     )
     scatter!(
         p_logo_dark,
-        [r2_traj[1, 1]],
-        [r2_traj[1, 2]],
+        [r2_traj[end, 1]],
+        [r2_traj[end, 2]],
         markerstrokecolor = "#eee",
         markercolor = julia_red,
         markersize = markersize,
     )
     scatter!(
         p_logo_dark,
-        [r3_traj[1, 1]],
-        [r3_traj[1, 2]],
+        [r3_traj[end, 1]],
+        [r3_traj[end, 2]],
         markerstrokecolor = "#eee",
         markercolor = julia_purple,
         markersize = markersize,
@@ -147,27 +169,90 @@ if show_plots
 
     scatter!(
         p_logo,
-        [r1_traj[1, 1]],
-        [r1_traj[1, 2]],
+        [r1_traj[end, 1]],
+        [r1_traj[end, 2]],
         markerstrokecolor = "#eee",
         markercolor = julia_green,
         markersize = markersize,
     )
     scatter!(
         p_logo,
-        [r2_traj[1, 1]],
-        [r2_traj[1, 2]],
+        [r2_traj[end, 1]],
+        [r2_traj[end, 2]],
         markerstrokecolor = "#eee",
         markercolor = julia_red,
         markersize = markersize,
     )
     scatter!(
         p_logo,
-        [r3_traj[1, 1]],
-        [r3_traj[1, 2]],
+        [r3_traj[end, 1]],
+        [r3_traj[end, 2]],
         markerstrokecolor = "#eee",
         markercolor = julia_purple,
         markersize = markersize,
     )
     display(p_logo)
+
+    ### Logo Animation
+    ##
+    stroke_color = "#34495e"
+    stroke_color_dark = "#ecf0f1"
+    stroke_width = 15
+
+    horizon_t = 5.0
+
+    line_info = (width = stroke_width, color = stroke_color)
+    planet_1_info = (markerstrokecolor = "#eee", markersize = 50, markercolor = julia_green)
+    planet_2_info = (planet_1_info..., markercolor = julia_red)
+    planet_3_info = (planet_1_info..., markercolor = julia_purple)
+
+
+    fps_logo = 24
+    Δt_logo = rationalize(1 / fps_logo)
+    t_zoh, r_zoh = @zoh out.tcs out.xcs Δt_logo
+    n = length(t_zoh)
+    horizon = Int(round(horizon_t / Δt_logo))
+
+    x_min = minimum(vcat(r_zoh[:, 1], r_zoh[:, 3], r_zoh[:, 5]))
+    x_max = maximum(vcat(r_zoh[:, 1], r_zoh[:, 3], r_zoh[:, 5]))
+    y_min = minimum(vcat(r_zoh[:, 2], r_zoh[:, 4], r_zoh[:, 6]))
+    y_max = maximum(vcat(r_zoh[:, 2], r_zoh[:, 4], r_zoh[:, 6]))
+
+    plot_info = (x_lims = 1.5 * [x_min, x_max], y_lims = 1.5 * [y_min, y_max])
+
+    r1 = r_zoh[:, 1:2]
+    r2 = r_zoh[:, 3:4]
+    r3 = r_zoh[:, 5:6]
+
+    line_info_dark = (line_info..., color = stroke_color_dark)
+    anim = @animate for i ∈ 1:n
+        logoanimation(i, r1, horizon, plot_info, line_info_dark, planet_1_info)
+        logoanimation!(i, r2, horizon, plot_info, line_info_dark, planet_2_info)
+        logoanimation!(
+            i,
+            r3,
+            horizon,
+            plot_info,
+            line_info_dark,
+            planet_3_info,
+            background_color = "#282f2f",
+        )
+    end
+    gif(anim, "docs/src/assets/logo-dark.gif", fps = fps_logo)
+
+    line_info_light = (line_info..., color = stroke_color)
+    anim = @animate for i ∈ 1:n
+        logoanimation(i, r1, horizon, plot_info, line_info_light, planet_1_info)
+        logoanimation!(i, r2, horizon, plot_info, line_info_light, planet_2_info)
+        logoanimation!(
+            i,
+            r3,
+            horizon,
+            plot_info,
+            line_info_light,
+            planet_3_info,
+            background_color = "#f5f5f5",
+        )
+    end
+    gif(anim, "docs/src/assets/logo.gif", fps = fps_logo)
 end
