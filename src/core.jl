@@ -35,7 +35,9 @@ function simulate(
 
     # process initial state, if given
     if x0 !== nothing
-        xc0 === nothing && xd0 === nothing && @error "If `x0` is given to `simulate`, `xc0` and `xd0` must not be given to avoid ambiguity."
+        xc0 === nothing &&
+            xd0 === nothing &&
+            @error "If `x0` is given to `simulate`, `xc0` and `xd0` must not be given to avoid ambiguity."
         xd0 = x0
         xc0 = x0
     end

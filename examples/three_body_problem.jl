@@ -1,7 +1,7 @@
 using SimpleSim
 using LinearAlgebra
 
-show_plots = true
+show_plots = false
 
 function fc_three_bodies(x, u, p, t)
     r1 = x[1:2]
@@ -34,19 +34,17 @@ x0 = vcat(
         r0 * cosd(210),
         r0 * sind(210),
     ],
-    [
-        0.0,
-        0.0,
-        3000000.0,
-        -3000000.0,
-        0.0,
-        0.0,
-    ]
+    [0.0, 0.0, 3000000.0, -3000000.0, 0.0, 0.0],
 )
 
 mass_scaling = 0.6
 three_bodies = (
-    p = (G = 6.67430e-11, m1 = mass_scaling*5e24, m2 = mass_scaling*5e24, m3 = mass_scaling*5e24),
+    p = (
+        G = 6.67430e-11,
+        m1 = mass_scaling * 5e24,
+        m2 = mass_scaling * 5e24,
+        m3 = mass_scaling * 5e24,
+    ),
     xc0 = x0,
     fc = fc_three_bodies,
     yc = yc_three_bodies,
@@ -97,33 +95,79 @@ if show_plots
     strokewidth = 3
     markersize = 50
 
-    p_logo = plot(
-        size=(500,500),
+    p_logo_dark = plot(
+        size = (500, 500),
         aspect_ratio = :equal,
         background_color = :transparent,
-        axis=([], false),
-        legend=false,
+        axis = ([], false),
+        legend = false,
     )
 
-    plot!(p_logo, r1_traj[:, 1], r1_traj[:, 2], color="#eee", linewidth=strokewidth)
-    plot!(p_logo, r2_traj[:, 1], r2_traj[:, 2], color="#eee", linewidth=strokewidth)
-    plot!(p_logo, r3_traj[:, 1], r3_traj[:, 2], color="#eee", linewidth=strokewidth)
+    plot!(p_logo_dark, r1_traj[:, 1], r1_traj[:, 2], color = "#eee", linewidth = strokewidth)
+    plot!(p_logo_dark, r2_traj[:, 1], r2_traj[:, 2], color = "#eee", linewidth = strokewidth)
+    plot!(p_logo_dark, r3_traj[:, 1], r3_traj[:, 2], color = "#eee", linewidth = strokewidth)
 
-    scatter!(p_logo, [r1_traj[1, 1]], [r1_traj[1, 2]],
-        markerstrokecolor="#eee",
-        markercolor=julia_green,
-        markersize=markersize,
+    scatter!(
+        p_logo_dark,
+        [r1_traj[1, 1]],
+        [r1_traj[1, 2]],
+        markerstrokecolor = "#eee",
+        markercolor = julia_green,
+        markersize = markersize,
     )
-    scatter!(p_logo, [r2_traj[1, 1]], [r2_traj[1, 2]],
-        markerstrokecolor="#eee",
-        markercolor=julia_red,
-        markersize=markersize,
+    scatter!(
+        p_logo_dark,
+        [r2_traj[1, 1]],
+        [r2_traj[1, 2]],
+        markerstrokecolor = "#eee",
+        markercolor = julia_red,
+        markersize = markersize,
     )
-    scatter!(p_logo, [r3_traj[1, 1]], [r3_traj[1, 2]],
-        markerstrokecolor="#eee",
-        markercolor=julia_purple,
-        markersize=markersize,
+    scatter!(
+        p_logo_dark,
+        [r3_traj[1, 1]],
+        [r3_traj[1, 2]],
+        markerstrokecolor = "#eee",
+        markercolor = julia_purple,
+        markersize = markersize,
+    )
+    display(p_logo_dark)
+
+    p_logo = plot(
+        size = (500, 500),
+        aspect_ratio = :equal,
+        background_color = :transparent,
+        axis = ([], false),
+        legend = false,
     )
 
+    plot!(p_logo, r1_traj[:, 1], r1_traj[:, 2], color = "#000", linewidth = strokewidth)
+    plot!(p_logo, r2_traj[:, 1], r2_traj[:, 2], color = "#000", linewidth = strokewidth)
+    plot!(p_logo, r3_traj[:, 1], r3_traj[:, 2], color = "#000", linewidth = strokewidth)
+
+    scatter!(
+        p_logo,
+        [r1_traj[1, 1]],
+        [r1_traj[1, 2]],
+        markerstrokecolor = "#eee",
+        markercolor = julia_green,
+        markersize = markersize,
+    )
+    scatter!(
+        p_logo,
+        [r2_traj[1, 1]],
+        [r2_traj[1, 2]],
+        markerstrokecolor = "#eee",
+        markercolor = julia_red,
+        markersize = markersize,
+    )
+    scatter!(
+        p_logo,
+        [r3_traj[1, 1]],
+        [r3_traj[1, 2]],
+        markerstrokecolor = "#eee",
+        markercolor = julia_purple,
+        markersize = markersize,
+    )
     display(p_logo)
 end
