@@ -43,23 +43,20 @@ function print_model_tree(model)
 
     @quiet working_copy = init_working_copy(model, structure_only = true)
 
-    # print depth first / FIFO
+    # print depth first / slightly adjusted FIFO to maintain order of models
     stack = Any[working_copy]
     depth_stack = Int[0]
     prev_groups_closed = []
     while !isempty(stack)
-        node = pop!(stack)
-        node_depth = pop!(depth_stack)
+        node = popfirst!(stack)
+        node_depth = popfirst!(depth_stack)
         last = isempty(stack) || depth_stack[1] != node_depth ? true : false
 
         print_model(node, node_depth, last = last, prev_groups_closed = prev_groups_closed)
 
-        length(node.models) > 0 ? push!(prev_groups_closed, last) :
-        (last && length(prev_groups_closed) > 0 ? pop!(prev_groups_closed) : nothing)
-        for child in node.models
-            pushfirst!(depth_stack, node_depth + 1)
-            pushfirst!(stack, child)
-        end
+        length(node.models) > 0 ? push!(prev_groups_closed, last) : (last && length(prev_groups_closed) > 0 ? pop!(prev_groups_closed) : nothing)
+        pushfirst!(stack, node.models...)
+        pushfirst!(depth_stack, [node_depth + 1 for i in 1:length(node.models)]...)
     end
     return nothing
 end
