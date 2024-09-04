@@ -4,7 +4,7 @@ In this example, a four-rotor drone, just as the ones you can buy from various m
 
 * a rigid body
 * motors
-* rotors
+* propellers
 * sensors
 * a control system
 
@@ -108,7 +108,7 @@ prop_3 = prop_1
 prop_4 = prop_1
 ```
 
-## The Sensors
+## RPM Sensors
 
 We assume the motors provide RPM feedback. But the sensor for that is digital and only updates at a frequency of 100Hz.
 
@@ -129,40 +129,89 @@ sensor_3 = sensor_1
 sensor_4 = sensor_1
 ```
 
-## The Airframe
+Naturally, all sensors should be purely discrete-time.
 
-To gather the motor and propeller models, we define a state-less airframe model that simply computes the overall force and torque acting on the system, given four refernce RPM values.
+## "Powered" Propellers
+
+This model is not strictly necessary. However, to showcase the modularity of `SimpleSim.jl` we will wrap a motor, propeller and RPM sensor
+
+
+```julia
+fc_powered_prop = (x, u, p, t; models) -> nothing
+
+function yc_powered_prop(x, r_ω, p, t; models)
+    ω = @call! models.motor r_ω
+    ft = @call! models.prop ω
+    ω_measurement = @call! models.sensor ω
+
+    return [ft..., ω_measurement...]
+end
+
+powered_prop_1 = (
+    p = nothing,
+    fc = fc_powered_prop,
+    yc = yc_powered_prop,
+    uc0 = 0.0,
+    models = (
+        motor = motor_1,
+        prop = prop_1,
+        sensor = rpm_sensor_1,
+    )
+)
+
+powered_prop_2 = (powered_prop_1...,
+    models = (
+        motor = motor_2,
+        prop = prop_2,
+        sensor = rpm_sensor_2,
+    )
+)
+
+powered_prop_3 = # ...
+```
+
+A `powered_prop` is a continuous-time model, taking a reference RPM as input. It then calls the motor model, computes the thrust and torque generated using the prop model and returns the force, torque and the sensor measurement of the current RPM.
+
+## Airframe
+
+To gather the motor and propeller models, we define a state-less airframe model that simply computes the overall force and torque acting on the system, given four reference RPM values.
+
+Note, that since the propellers are excerted from the drone's center of gravity they need to be included in the computation of the total torque acting on the system.
 
 ```julia
 fc_airframe = (x, u, p, t; models) -> nothing
 
 function yc_airframe(x, r_ω, p, t; models)
-    rpm_1 = @call! models.motor_1 r_ω[1]
-    rpm_2 = @call! models.motor_2 r_ω[1]
-    rpm_3 = @call! models.motor_3 r_ω[1]
-    rpm_4 = @call! models.motor_4 r_ω[1]
+    ft_ω_1 = @call! models.powered_prop_1 r_ω[1]
+    ft_ω_2 = @call! models.powered_prop_2 r_ω[2]
+    ft_ω_3 = @call! models.powered_prop_3 r_ω[3]
+    ft_ω_4 = @call! models.powered_prop_4 r_ω[4]
 
-    [f_1, t_1] = @call! models.
+    # compute the total thrust in the drone's frame of reference
+    f_total_B = [0, 0, - ft_ω_1[1] - ft_ω_2[1] - ft_ω_3[1] - ft_ω_4[1]]
+
+    # compute total total torque
+    t_aero_B = [0, 0, ft_ω_1[2] + ft_ω_2[2] + ft_ω_3[2] + ft_ω_4[2]]
+    t_thrust_B = p.x_prop_1_B × [0, 0, ft_ω_1[1]] + p.x_prop_2_B × [0, 0, ft_ω_2[1]] + p.x_prop_3_B × [0, 0, ft_ω_3[1]] + p.x_prop_4_B × [0, 0, ft_ω_4[1]]
+
+    return vcat(f_total_B, t_aero_B + t_thrust_B, ft_ω_1[end], ft_ω_2[end], ft_ω_3[end], ft_ω_4[end])
 end
 
 airframe = (
-    p = nothing,
+    p = (
+        x_prop_1_B = [10e-2, 10e-2, 0.0],
+        x_prop_2_B = [-10e-2, 10e-2, 0.0],
+        x_prop_3_B = [-10e-2, -10e-2, 0.0],
+        x_prop_4_B = [10e-2, -10e-2, 0.0],
+    ),
     fc = fc_airframe,
     yc = yc_airframe,
     uc0 = [0.0, 0.0, 0.0, 0.0],
     models = (
-        motor_1 = motor_1,
-        sensor_1 = sensor_1,
-        prop_1 = prop_1,
-        motor_2 = motor_2,
-        sensor_2 = sensor_2,
-        prop_2 = prop_2,
-        motor_3 = motor_3,
-        sensor_3 = sensor_3,
-        prop_3 = prop_3,
-        motor_4 = motor_4,
-        sensor_4 = sensor_4,
-        prop_4 = prop_4,
+        powered_prop_1 = powered_prop_1,
+        powered_prop_2 = powered_prop_2,
+        powered_prop_3 = powered_prop_3,
+        powered_prop_4 = powered_prop_4,
     ),
 )
 ```
@@ -175,14 +224,14 @@ The rigid-body inputs are the sum of all forces and moments acting on the body i
 
 ```julia
 function fc_rigid_body(x, u, p, t)
-    
+
 end
 
 yc_rigid_body = (x, u, p, t) -> x
 
 rigid_body = (
     p = (
-        m = 0.2,
+        m = 0.3,
         J = [
 
         ],
@@ -193,6 +242,10 @@ rigid_body = (
     uc0 = [],
 )
 ```
+
+## GPS, Accelerometer and Gyroscope
+
+
 
 ## The Control System
 
