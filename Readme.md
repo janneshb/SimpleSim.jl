@@ -16,8 +16,7 @@
 - [ ] Add init hook that can alter `p` and is called before the simulation runs
 - [ ] Add terminate hook (for example to close opened files) that is run after simulation finishes
 - [x] Break up the project into different files (e.g. the solvers and macros can have their own file)
-
-- [ ] Make public
+- [x] Make public
 
 
 <b>SimpleSim.jl</b> is a light-weight simulation package for dynamical systems simulation, controller synthesis and testing and robotics.
