@@ -1,10 +1,16 @@
+# Introduction
+
 `SimpleSim.jl` is a minimalist Julia framework for modular dynamical system simulation.
 
 For installation, run `import Pkg; Pkg.add("SimpleSim.jl")` from within your Julia environment.
 
 ## Philosophy
 
-This software project aims at removing a lot of the overhead that a lot of the existing simulation frameworks out there. For this reason, `SimpleSim.jl` does not export any types and just a single function `simulate`. The interface is kept light weight and the majority of design decisions are left up to the user.
+This software project aims at removing a lot of the overhead that a lot of the existing simulation frameworks out there have.
+`SimpleSim.jl` does not export any types. The interface almost solely consists of the function `simulate` and a agreed-upon model structure.
+The light interface results in most design decisions left up to the user.
+
+At the same time `SimpleSim.jl` does not compromise on functionality and offers a feature-rich simulation framework.
 
 ## Short overview
 

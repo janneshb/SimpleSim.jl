@@ -15,6 +15,7 @@ pages = [
         "Bouncing Ball" => "examples/bouncing_ball.md",
         "Feedback Control" => "examples/feedback_control.md",
         "Random Walk" => "examples/random_walk.md",
+        "Four-Rotor Drone" => "examples/four_rotor_drone.md",
     ],
     "Running Simulations" => [
         "Standalone Simulations" => "functions/standalone_sim.md",
@@ -27,6 +28,7 @@ pages = [
         "`@log` macro" => "output/log.md",
     ],
     "Integrators" => [
+        "Overview" => "integrators/overview.md",
         "Euler" => "integrators/euler.md",
         "Heun" => "integrators/heun.md",
         "4th Order Runge-Kutta" => "integrators/rk4.md",

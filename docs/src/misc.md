@@ -1,6 +1,6 @@
 # Miscellanoues Functionalities
 
-### Model Tree Printing
+### Analyzing the Model Structure
 
 ```@docs
 print_model_tree(model)
