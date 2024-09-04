@@ -1,8 +1,18 @@
 export @out, @out_ct, @out_dt
 """
-    @out
+    @out model
 
-The out macro.
+Returns the current output of `model`. This macro is useful in `fc` or `fd` functions when access to a submodel's output is needed. The macro works similar to [`@state`](@ref).
+
+# Example
+```julia
+function fc_parent_model(x, u, p, t; models)
+    y_child = @out models[1]
+    # ...
+end
+```
+
+__Note:__ `@out` does not update the `model`. It only returns its current output. Use [`@call!`](@ref) to update submodels.
 """
 macro out(model)
     quote
@@ -18,9 +28,10 @@ macro out(model)
 end
 
 """
-    @out_ct
+    @out_ct model
 
-The CT out macro.
+Returns the output of a given continuous-time model. Especially useful when retrieving the output of a hybrid model in which case `@out` would be ambiguous.
+See [`@out`](@ref).
 """
 macro out_ct(model)
     quote
@@ -29,9 +40,10 @@ macro out_ct(model)
 end
 
 """
-    @out_dt
+    @out_dt model
 
-The DT out macro.
+Returns the output of a given discrete-time model. Especially useful when retrieving the output of a hybrid model in which case `@out` would be ambiguous.
+See [`@out`](@ref).
 """
 macro out_dt(model)
     quote
@@ -42,9 +54,19 @@ end
 # Returns the latest state of a model without running it.
 export @state, @state_ct, @state_dt
 """
-    @state
+    @state model
 
-The state macro.
+Returns the current state of `model`. This macro is useful in `fc` or `fd` functions when access to a submodel's state is needed. The macro works similar to [`@out`](@ref).
+
+__Note:__ `@state` does not update the `model`. It only returns its current state. Use [`@call!`](@ref) to update submodels.
+
+# Example
+```julia
+function fc_parent_model(x, u, p, t; models)
+    x_child = @state models[1]
+    # ...
+end
+```
 """
 macro state(model)
     quote
@@ -60,9 +82,10 @@ macro state(model)
 end
 
 """
-    @state_ct
+    @state_ct model
 
-The CT state macro.
+Returns the state of a given contiuous-time model. Especially useful when retrieving the state of a hybrid model in which case `@state` would be ambiguous.
+See [`@state`](@ref).
 """
 macro state_ct(model)
     quote
@@ -71,9 +94,10 @@ macro state_ct(model)
 end
 
 """
-    @state_dt
+    @state_dt model
 
-The DT state macro.
+Returns the state of a given discrete-time model. Especially useful when retrieving the state of a hybrid model in which case `@state` would be ambiguous.
+See [`@state`](@ref).
 """
 macro state_dt(model)
     quote

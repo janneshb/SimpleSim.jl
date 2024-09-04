@@ -1,8 +1,27 @@
 export simulate
 """
-    simulate(model)
+    simulate(model; kwargs...)
 
-Simulates the model.
+Runs the simulation for the given `model`.
+
+Returns a `NamedTuple` with all time-series information about the simulation.
+
+# Mandatory Keyword Arguments
+- `T`: Total time of the simulation. Mand
+
+# Optional Keyword Arguments
+- `uc`: Expects a function `(t) -> u` defining the input to a continuous-time model at time `t`. Defaults to `(t) -> nothing`.
+- `ud`: Expects a function `(t) -> u` defining the input to a discrete-time model at time `t`. Defaults to `(t) -> nothing`.
+- `Δt_max`: Maximum step size used for continuous-time model integration. Defaults to `DEFAULT_Δt` set in `SimpleSim.jl`.
+- `t0`: Initial time. Defaults to `0 // 1`.
+- `xc0`: Initial state for continuous-time model. Overwrites any initial state defined in the model itself. Defaults to `nothing`.
+- `xd0`: Initial state for discrete-time model. Overwrites any initial state defined in the model itself. Defaults to `nothing`.
+- `integrator`: Integration method to be used for continuous-time models. Defaults to `RK4.`
+
+These options can be passed to the `simulate` function as the `integrator` keyword argument:
+```julia
+@enum SimpleSimIntegrator RK4 = 1 Euler = 2 Heun = 3 RKF45 = 4
+```
 """
 function simulate(
     model;
@@ -13,7 +32,6 @@ function simulate(
     t0 = 0 // 1 * oneunit(T),
     xc0 = nothing, # note: this is only valid for the top-level model. Also helpful if a stand-alone model is simulated
     xd0 = nothing,
-    x0 = nothing,
     integrator = RK4,
 )
 
@@ -31,15 +49,6 @@ function simulate(
         T = float(T)
         t0 = float(t0)
         Δt_max = float(Δt_max)
-    end
-
-    # process initial state, if given
-    if x0 !== nothing
-        xc0 === nothing &&
-            xd0 === nothing &&
-            @error "If `x0` is given to `simulate`, `xc0` and `xd0` must not be given to avoid ambiguity."
-        xd0 = x0
-        xc0 = x0
     end
 
     # build callable structure to mimic the model tree
@@ -96,9 +105,25 @@ end
 # Calls a model (runs it, if its due) and returns its output. Should be used within yc and yd.
 export @call!, @call_ct!, @call_dt!
 """
-    @call!
+    @call! model u
 
-The call macro.
+The `@call!` macro is crucial for running simulations with submodels.
+In the parent model's `yc` or `yd` function every one of its submodels must be called using `@call!`.
+Otherwise the submodels will not be updated.
+
+Returns the output of `model` after the update. Use [`@state`](@ref) after calling `@call!` to access the new state.
+
+# Example
+```julia
+function yc_parent_model(x, u, p, t; models)
+    # ...
+    y_child = @call! models[1] u_child
+    # ...
+end
+```
+
+_Note:_ The `@call!` must not be used inside a dynamics (`fc` / `fd`) function. This will throw an error.
+If you need access to a submodels output/state inside your parent model's dynamics function use [`@out`](@ref) / [`@state`](@ref).
 """
 macro call!(model, u)
     quote
@@ -115,9 +140,10 @@ macro call!(model, u)
 end
 
 """
-    @call_ct!
+    @call_ct! model u
 
-The CT call macro
+This macro should be used instead of `@call!` for calling the continuous-time dynamics of a hybrid model. This prevents ambiguity.
+See [`@call!`](@ref).
 """
 macro call_ct!(model, u)
     quote
@@ -132,9 +158,10 @@ macro call_ct!(model, u)
 end
 
 """
-    @call_dt!
+    @call_dt! model u
 
-The DT call macro.
+This macro should be used instead of `@call!` for calling the discrete-time dynamics of a hybrid model. This prevents ambiguity.
+See [`@call!`](@ref).
 """
 macro call_dt!(model, u)
     quote

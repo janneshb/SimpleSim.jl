@@ -12,6 +12,7 @@ Prints a _tree_ of the given model similar to a folder tree printed by the Linux
 
 An example for a feedback-controlled inverted pendulum could look like this
 ```
+julia> print_model_tree(my_model)
 └─1 (TypeCT): top-level model / FeedbackSystem
   ├─2 (TypeCT): .inverted_pendulum / NamedTuple
   └─3 (TypeCT): .controller / NamedTuple

@@ -82,7 +82,6 @@ __Optional Keyword Arguments:__
 
 * `t0` initial time, defaults to `0//1`
 * `xd0` initial state, defaults to `nothing`. Overwrites initial state given in model.
-* `x0` for convenience, if given it replaces `xd0`. `xd0` and `x0` must not be given at the same time.
 * `ud` input function  `(t) -> some_input`, if none is given, the input will be `nothing` for all times.
 
 __Supported Keywords with no Effect for DT Simulations:__

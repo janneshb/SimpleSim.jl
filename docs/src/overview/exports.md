@@ -6,11 +6,7 @@
 simulate(model)
 ```
 
-```julia
-@enum SimpleSimIntegrator RK4 = 1 Euler = 2 Heun = 3 RKF45 = 4
-```
-
-## Macros
+## Updating Submodels
 
 ```@docs
 @call!
@@ -24,6 +20,7 @@ simulate(model)
 @call_dt!
 ```
 
+## Access to Submodel Output
 ```@docs
 @out
 ```
@@ -36,6 +33,7 @@ simulate(model)
 @out_dt
 ```
 
+## Access to Submodel State
 ```@docs
 @state
 ```
