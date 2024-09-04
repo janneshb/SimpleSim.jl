@@ -53,7 +53,3 @@ makedocs(
     warnonly = [:missing_docs, :cross_references],
 )
 println("Done!\n")
-
-println("Deploying Documentation...")
-# deploydocs(repo = "github.com/janneshb/SimpleSim.jl.git")
-println("Done!")
