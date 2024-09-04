@@ -1,4 +1,9 @@
 export @out, @out_ct, @out_dt
+"""
+    @out
+
+The out macro.
+"""
 macro out(model)
     quote
         model_to_call = $(esc(model))
@@ -12,12 +17,22 @@ macro out(model)
     end
 end
 
+"""
+    @out_ct
+
+The CT out macro.
+"""
 macro out_ct(model)
     quote
         $(esc(model)).ycs[end]
     end
 end
 
+"""
+    @out_dt
+
+The DT out macro.
+"""
 macro out_dt(model)
     quote
         $(esc(model)).yds[end]
@@ -26,6 +41,11 @@ end
 
 # Returns the latest state of a model without running it.
 export @state, @state_ct, @state_dt
+"""
+    @state
+
+The state macro.
+"""
 macro state(model)
     quote
         model_to_call = $(esc(model))
@@ -39,12 +59,22 @@ macro state(model)
     end
 end
 
+"""
+    @state_ct
+
+The CT state macro.
+"""
 macro state_ct(model)
     quote
         $(esc(model)).xcs[end]
     end
 end
 
+"""
+    @state_dt
+
+The DT state macro.
+"""
 macro state_dt(model)
     quote
         $(esc(model)).xds[end]

@@ -95,6 +95,11 @@ end
 
 # Calls a model (runs it, if its due) and returns its output. Should be used within yc and yd.
 export @call!, @call_ct!, @call_dt!
+"""
+    @call!
+
+The call macro.
+"""
 macro call!(model, u)
     quote
         model_to_call = $(esc(model))
@@ -109,6 +114,11 @@ macro call!(model, u)
     end
 end
 
+"""
+    @call_ct!
+
+The CT call macro
+"""
 macro call_ct!(model, u)
     quote
         MODEL_CALLS_DISABLED &&
@@ -121,6 +131,11 @@ macro call_ct!(model, u)
     end
 end
 
+"""
+    @call_dt!
+
+The DT call macro.
+"""
 macro call_dt!(model, u)
     quote
         MODEL_CALLS_DISABLED &&
