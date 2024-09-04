@@ -54,9 +54,10 @@ function print_model_tree(model)
 
         print_model(node, node_depth, last = last, prev_groups_closed = prev_groups_closed)
 
-        length(node.models) > 0 ? push!(prev_groups_closed, last) : (last && length(prev_groups_closed) > 0 ? pop!(prev_groups_closed) : nothing)
+        length(node.models) > 0 ? push!(prev_groups_closed, last) :
+        (last && length(prev_groups_closed) > 0 ? pop!(prev_groups_closed) : nothing)
         pushfirst!(stack, node.models...)
-        pushfirst!(depth_stack, [node_depth + 1 for i in 1:length(node.models)]...)
+        pushfirst!(depth_stack, [node_depth + 1 for i = 1:length(node.models)]...)
     end
     return nothing
 end
