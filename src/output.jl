@@ -141,11 +141,11 @@ function init_working_copy(
             model_callable_dt!(u, t, model, model_working_copy, T) : nothing,
         Δt = !structure_only && hasproperty(model, :Δt) && model.Δt !== nothing ? model.Δt :
              Δt,
-        zero_crossing_prec = !structure_only &&
-                             hasproperty(model, :zero_crossing_precision) &&
-                             model.zero_crossing_precision !== nothing ?
-                             model.zero_crossing_precision :
-                             DEFAULT_zero_crossing_precision,
+        zero_crossing_tol = !structure_only &&
+                             hasproperty(model, :zero_crossing_tol) &&
+                             model.zero_crossing_tol !== nothing ?
+                             model.zero_crossing_tol :
+                             DEFAULT_zero_crossing_tol,
         # the following store the latest state
         tcs = !structure_only && hasproperty(model, :yc) && model.yc !== nothing ? [t0] :
               nothing,
