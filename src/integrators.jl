@@ -119,7 +119,7 @@ function step_rkf45(Δt, fc, x, u, p, t, submodel_tree)
 
     # tolerance not yet reached. Decrease Δt and repeat RKF45 step
     Δt_new = 0.84 * (abs_tol / truncation_error)^(1 / 4) * Δt
-    if Δt_new < Δt_MIN
+    if Δt_new < ΔT_MIN
         @warn "Reached a time step length of $Δt_new at time $t with truncation error $truncation_error. Your problem seems to be very stiff."
         return x_next_rk5, Δt # This step is not converging
     end

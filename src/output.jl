@@ -144,7 +144,7 @@ function init_working_copy(
         zero_crossing_tol = !structure_only &&
                             hasproperty(model, :zero_crossing_tol) &&
                             model.zero_crossing_tol !== nothing ? model.zero_crossing_tol :
-                            DEFAULT_zero_crossing_tol,
+                            ZERO_CROSSING_TOL,
         # the following store the latest state
         tcs = !structure_only && hasproperty(model, :yc) && model.yc !== nothing ? [t0] :
               nothing,

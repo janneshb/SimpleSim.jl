@@ -12,7 +12,7 @@ Returns a `NamedTuple` with all time-series information about the simulation.
 # Optional Keyword Arguments
 - `uc`: Expects a function `(t) -> u` defining the input to a continuous-time model at time `t`. Defaults to `(t) -> nothing`.
 - `ud`: Expects a function `(t) -> u` defining the input to a discrete-time model at time `t`. Defaults to `(t) -> nothing`.
-- `Δt_max`: Maximum step size used for continuous-time model integration. Defaults to `Δt_DEFAULT` set in `SimpleSim.jl`.
+- `Δt_max`: Maximum step size used for continuous-time model integration. Defaults to `ΔT_DEFAULT` set in `SimpleSim.jl`.
 - `t0`: Initial time. Defaults to `0 // 1`.
 - `xc0`: Initial state for continuous-time model. Overwrites any initial state defined in the model itself. Defaults to `nothing`.
 - `xd0`: Initial state for discrete-time model. Overwrites any initial state defined in the model itself. Defaults to `nothing`.
@@ -52,21 +52,38 @@ However, if necessary the following options can be passed in a `NamedTuple` to t
     Defaults to `1 // 1`.
 - `base_rng`: random number generator used for random draw functions.
     Defaults to `MersenneTwister`.
+
+# Example with Options
+
+```julia
+out = simulate(my_model,
+    T = 20 // 1,
+    options = (
+        silent = true,
+        base_rng = Xoshiro,
+    )
+)
+```
 """
 function simulate(
     model;
     T,
     uc = (t) -> nothing,
     ud = (t) -> nothing,
-    Δt_max = Δt_DEFAULT,
+    Δt_max = ΔT_DEFAULT,
     t0 = 0 // 1 * oneunit(T),
     xc0 = nothing, # note: this is only valid for the top-level model. Also helpful if a stand-alone model is simulated
     xd0 = nothing,
-    integrator = RK4,
+    integrator::SimpleSimIntegrator = RK4,
+    options::NamedTuple = (;),
 )
+    # evaluate options, if given any
+    for (k, v) in zip(keys(options), options)
+        @set_option k v
+    end
 
     # get supposed step size and end of simulation
-    Δt_max = Δt_max === nothing ? oneunit(T) * Δt_DEFAULT : check_rational(Δt_max)
+    Δt_max = Δt_max === nothing ? oneunit(T) * ΔT_DEFAULT : check_rational(Δt_max)
     T = check_rational(T)
     t0 = check_rational(t0)
 
