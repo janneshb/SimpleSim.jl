@@ -89,7 +89,7 @@ function simulate(
 
     # find smallest time-step
     Δt_max = find_min_Δt(model, Δt_max, Δt_max)
-    DEBUG && println("Using Δt = $Δt_max for continuous-time models.")
+    DEBUG && !SILENT && println("Using Δt = $Δt_max for continuous-time models.")
 
     # if RKF45 is used, times are kept as floats instead of Rationals to avoid overflow
     if integrator == RKF45
@@ -118,10 +118,10 @@ function simulate(
         simulation_is_running, t = loop!(model_working_copy, uc, ud, t, Δt_max, T)
     end
 
-    DEBUG && println("Simulation has terminated.")
-    DEBUG && println("Processing data...")
+    DEBUG && !SILENT && println("Simulation has terminated.")
+    DEBUG && !SILENT && println("Processing data...")
     out = post_process(model_working_copy)
-    DEBUG && println("Done!")
+    DEBUG && !SILENT && println("Done!")
     return out
 end
 
@@ -139,6 +139,7 @@ function loop!(model_working_copy, uc, ud, t, Δt_max, T)
     end
 
     DEBUG &&
+        !SILENT &&
         DISPLAY_PROGRESS &&
         div(t_next, PROGRESS_SPACING * oneunit(Δt)) !=
         div(t_next - Δt, PROGRESS_SPACING * oneunit(Δt)) ?
@@ -177,7 +178,8 @@ macro call!(model, u)
         model_to_call = $(esc(model))
         t = $(esc(:t))
         if isHybrid(model_to_call)
-            @error "@call! is ambiguous for hybrid systems. Please specify using @call_ct! or @call_dt!."
+            !SILENT &&
+                @error "@call! is ambiguous for hybrid systems. Please specify using @call_ct! or @call_dt!."
         elseif isCT(model_to_call)
             @call_ct! model_to_call $(esc(u))
         elseif isDT(model_to_call)
@@ -195,6 +197,8 @@ See [`@call!`](@ref).
 macro call_ct!(model, u)
     quote
         MODEL_CALLS_DISABLED &&
+            !SILENT &&
+            !SILENT &&
             @error "@call! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in umambiguous cases)."
 
         model_to_call = $(esc(model))
@@ -213,6 +217,7 @@ See [`@call!`](@ref).
 macro call_dt!(model, u)
     quote
         MODEL_CALLS_DISABLED &&
+            !SILENT &&
             @error "@call! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in umambiguous cases)."
 
         model_to_call = $(esc(model))
@@ -225,7 +230,8 @@ end
 function model_callable_ct!(uc, t, model, model_working_copy, Δt, integrator, T)
     context = @context # Warn if we are still in DT context
     if context === ContextDT::SimulationContext
-        @warn "You are calling a CT model (id $(model_working_copy.model_id)) from within a DT model. This should not be done and will lead to unexpected results"
+        !SILENT &&
+            @warn "You are calling a CT model (id $(model_working_copy.model_id)) from within a DT model. This should not be done and will lead to unexpected results"
     end
 
     xc_next = model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end]
@@ -285,7 +291,7 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt, integrator, T
                         break # termination of algorithm if within +/-(zero_crossing_tol/2)
                     end
                 catch
-                    @warn "Zero-crossing tolerance could not be met."
+                    !SILENT && @warn "Zero-crossing tolerance could not be met."
                     break # probably a Rational overflow occured. Accept current tolerance but print warning
                 end
             end

@@ -20,7 +20,7 @@ macro set_option(key, val)
         if isdefined(Main, Symbol($global_var_name))
             global $global_var_name_sym = $val
         else
-            @warn "Ignoring unsupported option `$($var_name)`."
+            !SILENT && @warn "Ignoring unsupported option `$($var_name)`."
         end
     end
 end
