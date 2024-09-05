@@ -117,7 +117,7 @@ function simulate(
     end
 
     DEBUG && !SILENT && println("Simulation has terminated.")
-    DEBUG && !SILENT && println("Processing data...")
+    DEBUG && !SILENT && println("Processing simulation logs...")
     out = post_process(model_working_copy)
     DEBUG && !SILENT && println("Done!")
     return out
