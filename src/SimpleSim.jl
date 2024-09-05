@@ -3,6 +3,9 @@ module SimpleSim
 using Random
 import Base.push!, Base.@inline, Base.gcd
 
+global VERSION = "0.1.1"
+global YEAR = "2024"
+global AUTHORS = "Jannes Huehnerbein"
 global ΔT_DEFAULT = 1 // 100 # default step size for CT systems, must be rational!
 global ΔT_MIN = 1 // 1_000_000
 global ZERO_CROSSING_TOL = 1e-5
@@ -29,5 +32,6 @@ include("info.jl")
 include("output.jl")
 include("integrators.jl")
 include("misc.jl")
+include("preamble.jl")
 
 end # module SimpleSim
