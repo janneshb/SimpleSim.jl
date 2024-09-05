@@ -1,5 +1,4 @@
 using SimpleSim
-using StaticArrays
 
 show_plots = false
 
@@ -26,14 +25,14 @@ function fc_inv_pendulum(x, u, p, t)
     #
     ddz = (u / m - g * s_θ * c_θ - l2 * dθ * dθ * s_θ) / (1 + c_θ * c_θ)
     ddθ = (ddz * c_θ + g * s_θ) / l
-    return SVector(dz, ddz, dθ, ddθ)
+    return [dz, ddz, dθ, ddθ]
 end
 
-yc_inv_pendulum(x, u, p, t) = SVector(x[3], x[4])
+yc_inv_pendulum(x, u, p, t) = [x[3], x[4]]
 
 inverted_pendulum = (
     p = (g = 9.81, l = 0.5, m = 0.3),
-    xc0 = SVector(0.0, 0.0, deg2rad(15.0), 0.0),
+    xc0 = [0.0, 0.0, deg2rad(15.0), 0.0],
     uc0 = 0.0,
     fc = fc_inv_pendulum,
     yc = yc_inv_pendulum,
@@ -42,7 +41,7 @@ inverted_pendulum = (
 # CONTROLLER
 #
 function fc_controls(x, e, p, t)
-    return SVector(e[2], e[1])
+    return [e[2], e[1]]
 end
 
 function yc_controls(x, u, p, t)
@@ -51,7 +50,7 @@ end
 
 controller = (
     p = (k_p = 1.0, k_i = 0.1),
-    xc0 = SVector(zeros(2)...),
+    xc0 = [zeros(2)...],
     uc0 = 0.0,
     fc = fc_controls,
     yc = yc_controls,
@@ -87,7 +86,7 @@ controlled_system = (
 
 # RUN THE SIM
 #
-r(t) = SVector(0.0, 0.0) # reference
+r(t) = [0.0, 0.0] # reference
 history = simulate(controlled_system, T = 1 // 1, uc = r)
 println()
 

@@ -1,18 +1,16 @@
 using SimpleSim
-using StaticArrays
 
 show_plots = false
 
 stairs(x) = -round(x)
 
-fc_bouncing_ball(x, u, p, t) =
-    SVector(x[3], x[4], -1.0 * p.c * x[3]^2, -1.0 * p.c * x[4]^2 - p.g)
+fc_bouncing_ball(x, u, p, t) = [x[3], x[4], -1.0 * p.c * x[3]^2, -1.0 * p.c * x[4]^2 - p.g]
 
-yc_bouncing_ball(x, u, p, t) = SVector(x[1], x[2])
+yc_bouncing_ball(x, u, p, t) = [x[1], x[2]]
 
 zc_bouncing_ball(x, p, t) = x[2] - stairs(x[1]) # function that quantifies "zero-crossing happened!", must be scalar
 
-zc_exec_bouncing_ball(x, u, p, t) = SVector(x[1], x[2], x[3], -p.ε * x[4])
+zc_exec_bouncing_ball(x, u, p, t) = [x[1], x[2], x[3], -p.ε * x[4]]
 
 x0 = [0, 3.0, 3.0, 0]
 

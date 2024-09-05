@@ -1,21 +1,5 @@
-using SimpleSim
 using Test
+using SimpleSim
 
-using Suppressor
-
-@testset "Examples" begin
-    @suppress_out begin
-        include("../examples/controlled_inverted_pendulum.jl")
-        include("../examples/discrete_pendulum.jl")
-        include("../examples/hybrid_pendulum.jl")
-        include("../examples/pendulum.jl")
-        include("../examples/timing.jl")
-        include("../examples/bouncing_ball.jl")
-        include("../examples/random_draws.jl")
-        include("../examples/adaptive_step.jl")
-        include("../examples/stiff_ivp.jl")
-        include("../examples/three_body_problem.jl")
-    end
-end
-
-println("Done testing!")
+include("test_integrators.jl")
+include("test_full_sims.jl")
