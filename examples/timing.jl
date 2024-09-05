@@ -1,5 +1,4 @@
 using SimpleSim
-using StaticArrays
 
 show_plots = false
 

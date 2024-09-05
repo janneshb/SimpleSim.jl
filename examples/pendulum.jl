@@ -1,10 +1,9 @@
 using SimpleSim
-using StaticArrays
 
 show_plots = false
 
 # dynamic rule for the damped pendulum
-fc_pendulum(x, u, p, t) = SVector(x[2], -p.λ * x[2] - p.ω2 * sin(x[1]))
+fc_pendulum(x, u, p, t) = [x[2], -p.λ * x[2] - p.ω2 * sin(x[1])]
 
 # measurement model
 yc_pendulum(x, u, p, t) = x
