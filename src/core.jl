@@ -78,9 +78,9 @@ function simulate(
     options::NamedTuple = (;),
 )
     # evaluate options, if given any
-    for (k, v) in zip(keys(options), options)
-        @set_option k v
-    end
+    @set_options options
+
+    println("silent? $SILENT")
 
     # get supposed step size and end of simulation
     Δt_max = Δt_max === nothing ? oneunit(T) * ΔT_DEFAULT : check_rational(Δt_max)
@@ -138,8 +138,7 @@ function loop!(model_working_copy, uc, ud, t, Δt_max, T)
         return false, T
     end
 
-    DEBUG &&
-        !SILENT &&
+    !SILENT &&
         DISPLAY_PROGRESS &&
         div(t_next, PROGRESS_SPACING * oneunit(Δt)) !=
         div(t_next - Δt, PROGRESS_SPACING * oneunit(Δt)) ?
