@@ -11,10 +11,15 @@ end
 # @set_options(options) tries to find global variables according to the keys in the NamedTuple `options` and sets them to the appropriate value.
 macro set_options(options_nt)
     quote
-        keys = Symbol.(uppercase.(string.(Base.keys($(esc(options_nt))))))
+        keys_original = Base.keys($(esc(options_nt)))
+        keys = Symbol.(uppercase.(string.(keys_original)))
         vals = Base.values($(esc(options_nt)))
-        for (k, v) in zip(keys, vals)
-            eval(:(global $k = $v))
+        for (i, (k, v)) in enumerate(zip(keys, vals))
+            if !isdefined(SimpleSim, k)
+                !SILENT && @warn "Ignoring unsupported option $(keys_original[i])."
+            else
+                eval(:(global $k = $v))
+            end
         end
     end
 end

@@ -27,7 +27,12 @@ bouncing_ball = (
 
 T = 11 // 1
 
-history = simulate(bouncing_ball, T = T, integrator = RK4)
+history = simulate(
+    bouncing_ball,
+    T = T,
+    integrator = RK4,
+    options = (silent = true, display_progress = false),
+)
 
 if show_plots
     using Plots

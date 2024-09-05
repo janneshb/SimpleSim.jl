@@ -80,8 +80,6 @@ function simulate(
     # evaluate options, if given any
     @set_options options
 
-    println("silent? $SILENT")
-
     # get supposed step size and end of simulation
     Δt_max = Δt_max === nothing ? oneunit(T) * ΔT_DEFAULT : check_rational(Δt_max)
     T = check_rational(T)
