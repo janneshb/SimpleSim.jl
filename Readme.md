@@ -17,6 +17,7 @@
 - [ ] Add terminate hook (for example to close opened files) that is run after simulation finishes
 - [x] Break up the project into different files (e.g. the solvers and macros can have their own file)
 - [x] Make public
+- [x] Add to main Julia registry
 
 
 <b>SimpleSim.jl</b> is a light-weight simulation package for dynamical systems simulation, controller synthesis and testing and robotics.
