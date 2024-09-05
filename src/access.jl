@@ -18,7 +18,8 @@ macro out(model)
     quote
         model_to_call = $(esc(model))
         if isHybrid(model_to_call)
-            @error "@out is ambiguous for hybrid systems. Please specify using @out_ct or @out_dt."
+            !SILENT &&
+                @error "@out is ambiguous for hybrid systems. Please specify using @out_ct or @out_dt."
         elseif isCT(model_to_call)
             @out_ct model_to_call
         elseif isDT(model_to_call)
@@ -72,7 +73,8 @@ macro state(model)
     quote
         model_to_call = $(esc(model))
         if isHybrid(model_to_call)
-            @error "@state is ambiguous for hybrid systems. Please specify using @state_ct or @state_dt."
+            !SILENT &&
+                @error "@state is ambiguous for hybrid systems. Please specify using @state_ct or @state_dt."
         elseif isCT(model_to_call)
             @state_ct model_to_call
         elseif isDT(model_to_call)

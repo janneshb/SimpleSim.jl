@@ -2,6 +2,7 @@
 @inline _check_rational(x::Rational{Int64}) = x
 @inline _check_rational(x::Int) = x
 @inline _check_rational(x::AbstractFloat) = begin
+    !SILENT &&
     @error "Timesteps and durations should be given as `Rational` to avoid timing errors."
     x
 end

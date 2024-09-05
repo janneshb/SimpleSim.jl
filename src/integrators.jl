@@ -20,7 +20,7 @@ function step_ct(Δt, fc, x, args...; integrator = RK4)
     elseif integrator == RKF45
         return step_rkf45(Δt, fc, x, args...)
     else
-        @error "Integration method not supported."
+        !SILENT && @error "Integration method not supported."
     end
 end
 
@@ -112,15 +112,16 @@ function step_rkf45(Δt, fc, x, u, p, t, submodel_tree)
         2 * k6 / 55
 
     truncation_error = max(abs.(x_next_rk4 - x_next_rk5)...)
-    abs_tol = RKF45_REL_TOLERANCE * sqrt(sum(abs.(x_next_rk5) .^ 2))
-    if truncation_error < abs_tol || truncation_error < RKF45_MIN_ABS_ERR
+    abs_tol = RKF45_REL_TOL * sqrt(sum(abs.(x_next_rk5) .^ 2))
+    if truncation_error < abs_tol || truncation_error < RKF45_ABS_TOL
         return x_next_rk5, Δt # tolerance reached! Go with current RK5 estimate
     end
 
     # tolerance not yet reached. Decrease Δt and repeat RKF45 step
     Δt_new = 0.84 * (abs_tol / truncation_error)^(1 / 4) * Δt
-    if Δt_new < Δt_MIN
-        @warn "Reached a time step length of $Δt_new at time $t with truncation error $truncation_error. Your problem seems to be very stiff."
+    if Δt_new < ΔT_MIN
+        !SILENT &&
+            @warn "Reached a time step length of $Δt_new at time $t with truncation error $truncation_error. Your problem seems to be very stiff."
         return x_next_rk5, Δt # This step is not converging
     end
     return step_rkf45(Δt_new, fc, x, u, p, t, submodel_tree)

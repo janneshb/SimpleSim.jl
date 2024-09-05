@@ -1,13 +1,26 @@
 # @quiet macro disables DEBUG and DISABLE_PROGRESS output for the command given to it
 macro quiet(command)
     quote
-        exDEBUG = DEBUG
-        exDISPLAY_PROGRESS = DISPLAY_PROGRESS
-        global DEBUG = false
-        global DISPLAY_PROGRESS = false
+        exSILENT = SILENT
+        global SILENT = true
         $(esc(command))
-        global DEBUG = exDEBUG
-        global DISPLAY_PROGRESS = exDISPLAY_PROGRESS
+        global SILENT = exSILENT
+    end
+end
+
+# @set_options(options) tries to find global variables according to the keys in the NamedTuple `options` and sets them to the appropriate value.
+macro set_options(options_nt)
+    quote
+        keys_original = Base.keys($(esc(options_nt)))
+        keys = Symbol.(uppercase.(string.(keys_original)))
+        vals = Base.values($(esc(options_nt)))
+        for (i, (k, v)) in enumerate(zip(keys, vals))
+            if !isdefined(SimpleSim, k)
+                !SILENT && @warn "Ignoring unsupported option $(keys_original[i])."
+            else
+                eval(:(global $k = $v))
+            end
+        end
     end
 end
 

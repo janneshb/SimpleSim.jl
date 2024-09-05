@@ -73,8 +73,9 @@ function init_working_copy(
     model_id = MODEL_COUNT
 
     # TODO: add support for StaticArrays and better type inference
-    DEBUG && level == 0 ? println("Initializing models at t = ", float(t0)) : nothing
-    DEBUG && level == 0 ?
+    DEBUG && !SILENT && level == 0 ? println("Initializing models at t = ", float(t0)) :
+    nothing
+    DEBUG && !SILENT && level == 0 ?
     println(
         "Top-level model is ",
         isCT(model) ? "CT." : (isDT(model) ? "DT." : "hybrid."),
@@ -141,11 +142,10 @@ function init_working_copy(
             model_callable_dt!(u, t, model, model_working_copy, T) : nothing,
         Δt = !structure_only && hasproperty(model, :Δt) && model.Δt !== nothing ? model.Δt :
              Δt,
-        zero_crossing_prec = !structure_only &&
-                             hasproperty(model, :zero_crossing_precision) &&
-                             model.zero_crossing_precision !== nothing ?
-                             model.zero_crossing_precision :
-                             DEFAULT_zero_crossing_precision,
+        zero_crossing_tol = !structure_only &&
+                            hasproperty(model, :zero_crossing_tol) &&
+                            model.zero_crossing_tol !== nothing ? model.zero_crossing_tol :
+                            ZERO_CROSSING_TOL,
         # the following store the latest state
         tcs = !structure_only && hasproperty(model, :yc) && model.yc !== nothing ? [t0] :
               nothing,
@@ -178,13 +178,15 @@ function update_working_copy_ct!(model_working_copy, t, xc, yc, T)
         xc !== nothing ? push!(model_working_copy.xcs, eltype(model_working_copy.xcs)(xc)) :
         nothing
     catch
-        @error "Could not update CT state evolution. Please check your state variables for type consistency"
+        !SILENT &&
+            @error "Could not update CT state evolution. Please check your state variables for type consistency"
     end
     try
         yc !== nothing ? push!(model_working_copy.ycs, eltype(model_working_copy.ycs)(yc)) :
         nothing
     catch
-        @error "Could not update CT output evolution. Please check your output variables for type consistency"
+        !SILENT &&
+            @error "Could not update CT output evolution. Please check your output variables for type consistency"
     end
 end
 
@@ -198,19 +200,22 @@ function update_working_copy_dt!(model_working_copy, t, xd, yd, wd, T)
         xd !== nothing ? push!(model_working_copy.xds, eltype(model_working_copy.xds)(xd)) :
         nothing
     catch
-        @error "Could not update DT state evolution. Please check your state variables for type consistency"
+        !SILENT &&
+            @error "Could not update DT state evolution. Please check your state variables for type consistency"
     end
     try
         yd !== nothing ? push!(model_working_copy.yds, eltype(model_working_copy.yds)(yd)) :
         nothing
     catch
-        @error "Could not update DT output evolution. Please check your output variables for type consistency"
+        !SILENT &&
+            @error "Could not update DT output evolution. Please check your output variables for type consistency"
     end
     try
         wd !== nothing ? push!(model_working_copy.wds, eltype(model_working_copy.wds)(wd)) :
         nothing
     catch
-        @error "Could not update DT random draw evolution. Please check your random variables for type consistency"
+        !SILENT &&
+            @error "Could not update DT random draw evolution. Please check your random variables for type consistency"
     end
 end
 
