@@ -31,16 +31,27 @@ These options can be passed to the `simulate` function as the `integrator` keywo
 `SimpleSim.jl` has a few default parameters for running simulations that generally do not need to be changed.
 However, if necessary the following options can be passed in a `NamedTuple` to the `options` keyword argument.
 
-- `Δt_default`: replaces the default (maximum) step size used for continuous-time integration. Should be rational. Defaults to `1 // 100`.
-- `Δt_min`: replaces the minimum step size used for continuous-time integration. Especially relevant for adaptive step size integrators. Defaults to `1 // 1_000_000`.
-- `zero_crossing_tol`:
-- `RKF45_rel_tol`:
-- `RKF45_abs_tol`:
-- `silent`: if set to `true` all output, including warnings and erros is disabled. To only print erros and warnings and disable all other output set `display_progress` and `debug` to `false`. Defaults to `false`.
+- `Δt_default`: replaces the default (maximum) step size used for continuous-time integration. Should be rational.
+    Defaults to `1 // 100`.
+- `Δt_min`: replaces the minimum step size used for continuous-time integration. Especially relevant for adaptive step size integrators.
+    Defaults to `1 // 1_000_000`.
+- `zero_crossing_tol`: absolute tolerance used when computing the time of a zero-crossing.
+    Defaults to `1e-5`.
+- `RKF45_rel_tol`: relative tolerance between the truncation error and the 5th order Runge-Kutta estimate leading to termination of the `RKF45` integrator.
+    Defaults to `1e-6`.
+- `RKF45_abs_tol`: absolute tolerance for the truncation error leading to termination of the `RKF45` integrator.
+    Defaults to `1e-7`.
+- `silent`: if set to `true` all output, including warnings and erros is disabled.
+    To only print erros and warnings and disable all other output set `display_progress` and `debug` to `false`.
+    Defaults to `false`.
 - `debug`: set to `true` to get additional information printed in the terminal that might help you debug your models.
-- `display_progress`: set to `false` if you don't want to be updated about simulation progress in the terminal. Defaults to `true`.
-- `progress_spacing`: time between progress updates in the terminal. Defaults to `1 // 1`.
-- `base_rng`: random number generator used for random draw functions. Defaults to `MersenneTwister`.
+    Defaults to `false`.
+- `display_progress`: set to `false` if you don't want to be updated about simulation progress in the terminal.
+    Defaults to `true`.
+- `progress_spacing`: time between progress updates in the terminal.
+    Defaults to `1 // 1`.
+- `base_rng`: random number generator used for random draw functions.
+    Defaults to `MersenneTwister`.
 """
 function simulate(
     model;

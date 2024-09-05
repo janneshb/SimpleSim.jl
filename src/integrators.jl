@@ -112,8 +112,8 @@ function step_rkf45(Δt, fc, x, u, p, t, submodel_tree)
         2 * k6 / 55
 
     truncation_error = max(abs.(x_next_rk4 - x_next_rk5)...)
-    abs_tol = RKF45_REL_TOLERANCE * sqrt(sum(abs.(x_next_rk5) .^ 2))
-    if truncation_error < abs_tol || truncation_error < RKF45_MIN_ABS_ERR
+    abs_tol = RKF45_REL_TOL * sqrt(sum(abs.(x_next_rk5) .^ 2))
+    if truncation_error < abs_tol || truncation_error < RKF45_ABS_TOL
         return x_next_rk5, Δt # tolerance reached! Go with current RK5 estimate
     end
 

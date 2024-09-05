@@ -9,7 +9,7 @@
 - [x] Zero-crossing detection / bouncing ball example
 - [x] Finish implementing `RKF45` for three body problem.
 - [ ] Implement `RKF45` for nested models
-- [ ] Introduce simulation parameters storing things such as `Delta t_max`, `RKF45_REL_TOLERANCE` etc
+- [ ] Introduce simulation parameters storing things such as `Delta t_max`, `RKF45_REL_TOL` etc
 - [ ] Implement `@log` macro for easy access to variables that aren't state or output
 - [ ] Need better `@warn` and `@error`. Stuff is hard to debug at the moment
 - [ ] Make parameters `p` optional (just pass `nothing`)

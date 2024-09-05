@@ -6,8 +6,8 @@ import Base.push!, Base.@inline, Base.gcd
 global Δt_DEFAULT = 1 // 100 # default step size for CT systems, must be rational!
 global Δt_MIN = 1 // 1_000_000
 global DEFAULT_zero_crossing_tol = 1e-5
-global RKF45_REL_TOLERANCE = 1e-6
-global RKF45_MIN_ABS_ERR = 1e-7
+global RKF45_REL_TOL = 1e-6
+global RKF45_ABS_TOL = 1e-7
 global DEBUG = false
 global DISPLAY_PROGRESS = true
 global PROGRESS_SPACING = 1 // 1 # in the same unit as total time T
