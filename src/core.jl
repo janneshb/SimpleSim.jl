@@ -78,6 +78,7 @@ function simulate(
     options::NamedTuple = (;),
 )
     # evaluate options, if given any
+    @set_options DEFAULT_CONFIG
     @set_options options
 
     DEBUG && !SILENT && print_preamble()
