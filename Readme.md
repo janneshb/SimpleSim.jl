@@ -1,5 +1,18 @@
 # SimpleSim.jl
 
+<b>SimpleSim.jl</b> is a light-weight simulation package for dynamical systems simulation, controller synthesis and testing and robotics.
+
+Run `import Pkg; Pkg.add("SimpleSim")` from within your Julia environment to install `SimpleSim.jl`.
+
+## Examples
+
+Multiple demos in the `examples/` provide a rough but incomplete overview of what `SimpleSim.jl` can do.
+
+
+## Credit
+
+A similar simulation architecture was proposed by [@tuckermcclure](https://www.github.com/tuckermcclure) in [overdot-sandbox](https://github.com/tuckermcclure/overdot-sandbox).
+
 ## TODO
 
 - [x] Make sure the data is output as matrices and not a vector of vectors
@@ -18,17 +31,3 @@
 - [x] Break up the project into different files (e.g. the solvers and macros can have their own file)
 - [x] Make public
 - [x] Add to main Julia registry
-
-
-<b>SimpleSim.jl</b> is a light-weight simulation package for dynamical systems simulation, controller synthesis and testing and robotics.
-
-Run `import Pkg; Pkg.add("SimpleSim")` from within your Julia environment to install `SimpleSim.jl`.
-
-## Examples
-
-Multiple demos in the `exanmples/` provide a rough but incomplete overview of what `SimpleSim.jl` can do.
-
-
-## Credit
-
-A similar simulation architecture was proposed by [@tuckermcclure](https://www.github.com/tuckermcclure) in [overdot-sandbox](https://github.com/tuckermcclure/overdot-sandbox).
