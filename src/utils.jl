@@ -1,5 +1,5 @@
 @inline check_rational(x) = _check_rational(x)
-@inline _check_rational(x::Rational{Int64}) = x
+@inline _check_rational(x::Rational{T}) where {T<:Integer} = x
 @inline _check_rational(x::Int) = x
 @inline _check_rational(x::AbstractFloat) = begin
     !SILENT &&
