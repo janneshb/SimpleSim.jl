@@ -7,7 +7,6 @@ printSpace = " "
 export print_model_tree
 """
     print_model_tree(model)
-    print_model_tree(io, model)
 
 Prints a _tree_ of the given model similar to a folder tree printed by the Linux `tree` command.
 
