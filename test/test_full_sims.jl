@@ -129,17 +129,26 @@
         @test abs(out.ycs[end] - 1.0) < 0.01
     end
 
-    @testset "Full Simulation CT" begin
+    @testset "Hybrid Integration" begin
+        fc_integration = (x, u, p, t) -> 1.0
+        yc_integration = (x, u, p, t) -> x
+        fd_integration = (x, u, p, t) -> x + p.Δt
+        yd_integration = (x, u, p, t) -> x
 
-    end
-
-    @testset "Full Simulation DT" begin
-
-
-    end
-
-    @testset "Full Simulation Hybrid / Nested" begin
-
-
+        Δt = 1 // 10
+        hybrid_integrator = (
+            p = (
+                Δt = Δt,
+            ),
+            fc = fc_integration,
+            yc = yc_integration,
+            xc0 = 0.0,
+            fd = fd_integration,
+            yd = yd_integration,
+            xd0 = 0.0,
+            Δt = Δt,
+        )
+        out = simulate(hybrid_integrator, T = 5 // 1, options = (silent = true,))
+        @test abs(out.yds[end] - out.ycs[end]) < 1e-4
     end
 end
