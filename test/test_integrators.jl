@@ -72,4 +72,17 @@
         @test abs(x_next_rk4 - x_next_rk4_kwarg) < 1e-6
         @test abs(Δt_rk4 - Δt_rk4_kwarg) < 1e-6
     end
+
+    @testset "State-less Systems" begin
+        fd = (x, u, p, t) -> nothing
+        fc = (x, u, p, t) -> nothing
+
+        x_dt = SimpleSim.step_dt(fd, nothing, nothing, nothing, nothing, (;), nothing)
+        x_ct, Δt =
+            SimpleSim.step_ct(1 // 10, fd, nothing, nothing, nothing, nothing, (;), nothing)
+
+        @test isnothing(x_dt)
+        @test isnothing(x_ct)
+        @test Δt == 1 // 10
+    end
 end
