@@ -1,5 +1,9 @@
 # SimpleSim.jl
 
+[![](https://img.shields.io/badge/docs-online-blue.svg)](https://janneshb.github.io/SimpleSim.jl/dev/)
+[![JuliaTest](https://github.com/janneshb/SimpleSim.jl/workflows/CI/badge.svg)](https://github.com/janneshb/SimpleSim.jl/actions)
+[![codecov](https://codecov.io/github/janneshb/SimpleSim.jl/branch/main/graph/badge.svg?token=SVKB74R3FY)](https://codecov.io/github/janneshb/SimpleSim.jl)
+
 <b>SimpleSim.jl</b> is a light-weight simulation package for dynamical systems simulation, controller synthesis and testing and robotics.
 
 Run `import Pkg; Pkg.add("SimpleSim")` from within your Julia environment to install `SimpleSim.jl`.
@@ -31,3 +35,4 @@ A similar simulation architecture was proposed by [@tuckermcclure](https://www.g
 - [x] Break up the project into different files (e.g. the solvers and macros can have their own file)
 - [x] Make public
 - [x] Add to main Julia registry
+- [x] Add badges to Readme
