@@ -1,5 +1,5 @@
 @testset "Full Simulations" begin
-    @testset "ODE Solving" begin
+    @testset "ODE Solver" begin
         x_exact = (x) -> tan(x)
 
         Δt_max = 1 // 100
@@ -50,6 +50,33 @@
         @test mse_heun < mse_euler
         @test mse_rk4 < mse_heun
         @test mse_rkf45 < mse_rk4
+    end
+
+    @testset "Fricton-less Bouncing Ball (zero-crossing detection)" begin
+        x0 = [0, 3.0, 0, 0]
+        fc_bouncing_ball(x, u, p, t) = [x[3], x[4], 0.0, -1.0 * p.g]
+        yc_bouncing_ball(x, u, p, t) = [x[1], x[2]]
+        zc_bouncing_ball(x, p, t) = x[2]
+        zc_exec_bouncing_ball(x, u, p, t) = [x[1], x[2], x[3], -p.ε * x[4]]
+
+        bouncing_ball = (
+            p = (g = 9.81, ε = 1.0),
+            xc0 = x0,
+            fc = fc_bouncing_ball,
+            yc = yc_bouncing_ball,
+            zc = zc_bouncing_ball,
+            zc_exec = zc_exec_bouncing_ball,
+        )
+
+        T = 156 // 100
+        out = simulate(
+            bouncing_ball,
+            T = T,
+            integrator = RK4,
+            Δt_max = 1 // 100,
+            options = (silent = true, zero_crossing_tol = 1e-5),
+        )
+        @test maximum(abs.(out.xcs[end, :] - x0)) < 0.05
     end
 
     @testset "Full Simulation CT" begin
