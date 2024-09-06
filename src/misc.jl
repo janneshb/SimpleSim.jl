@@ -39,7 +39,7 @@ function print_model_tree(model)
         end
         !last ? print(printT) : print(printL)
         print(printLine)
-        println("$(model.model_id) ($(model.type)): $(model.name) ")
+        println(OUT_STREAM, "$(model.model_id) ($(model.type)): $(model.name) ")
     end
 
     @quiet working_copy = init_working_copy(model, structure_only = true)
