@@ -1,5 +1,8 @@
 # SimpleSim.jl
 
+[![](https://img.shields.io/badge/docs-online-blue.svg)](https://janneshb.github.io/SimpleSim.jl/dev/)
+[![JuliaTest](https://github.com/janneshb/SimpleSim.jl/workflows/CI/badge.svg)](https://github.com/janneshb/SimpleSim.jl/actions)
+
 <b>SimpleSim.jl</b> is a light-weight simulation package for dynamical systems simulation, controller synthesis and testing and robotics.
 
 Run `import Pkg; Pkg.add("SimpleSim")` from within your Julia environment to install `SimpleSim.jl`.
