@@ -1,6 +1,7 @@
 module SimpleSim
 
 using Random
+import Logging.Info, Logging.Debug, Logging.SimpleLogger, Logging.global_logger
 import Base.push!, Base.@inline, Base.gcd
 
 global VERSION = "0.1.0"
@@ -17,6 +18,7 @@ global DISPLAY_PROGRESS = true
 global PROGRESS_SPACING = 1 // 1 # in the same unit as total time T
 global SILENT = false
 global BASE_RNG = MersenneTwister
+global OUT_STREAM = nothing
 
 include("macros.jl")
 include("enums.jl")

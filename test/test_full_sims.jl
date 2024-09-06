@@ -73,7 +73,8 @@
             bouncing_ball,
             T = T,
             integrator = RK4,
-            options = (silent = true, Δt_max = 1 // 100, zero_crossing_tol = 1e-5),
+            Δt_max = 1 // 100,
+            options = (silent = true, zero_crossing_tol = 1e-5),
         )
         @test maximum(abs.(out.xcs[end, :] - x0)) < 0.05
     end

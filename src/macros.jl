@@ -37,10 +37,22 @@ macro set_options(options_nt)
         keys = Symbol.(uppercase.(string.(keys_original)))
         vals = Base.values($(esc(options_nt)))
         for (i, (k, v)) in enumerate(zip(keys, vals))
+            if isdefined(SimpleSim, k)
+                eval(:(global $k = $v))
+            end
+        end
+    end
+end
+
+# prints warnings for unsupported options
+macro check_options(options_nt)
+    quote
+        keys_original = Base.keys($(esc(options_nt)))
+        keys = Symbol.(uppercase.(string.(keys_original)))
+        vals = Base.values($(esc(options_nt)))
+        for (i, (k, v)) in enumerate(zip(keys, vals))
             if !isdefined(SimpleSim, k)
                 !SILENT && @warn "Ignoring unsupported option $(keys_original[i])."
-            else
-                eval(:(global $k = $v))
             end
         end
     end
