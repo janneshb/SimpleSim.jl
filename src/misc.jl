@@ -7,6 +7,7 @@ printSpace = " "
 export print_model_tree
 """
     print_model_tree(model)
+    print_model_tree(io, model)
 
 Prints a _tree_ of the given model similar to a folder tree printed by the Linux `tree` command.
 
@@ -23,8 +24,10 @@ Then follows the name of each model in the super model.
 This is either its field name in the `NamedTuple` passed as `models` or the index in the case of vectors or tuples.
 Finally, after the slash, the type of each model is indicated. This should either be the name of a `struct` type, or `NamedTuple`.
 """
-function print_model_tree(model)
+print_model_tree(io::IO, model) = print_model_tree(model, io = io)
+function print_model_tree(model; io = stdout)
     function print_model(
+        io,
         model,
         depth;
         last = false,
@@ -32,14 +35,14 @@ function print_model_tree(model)
     )
         for i = 1:depth
             if prev_groups_closed[i]
-                print(printSpace * printSpace)
+                print(io, printSpace * printSpace)
             else
-                print(printI * printSpace)
+                print(io, printI * printSpace)
             end
         end
-        !last ? print(printT) : print(printL)
-        print(printLine)
-        println(OUT_STREAM, "$(model.model_id) ($(model.type)): $(model.name) ")
+        !last ? print(io, printT) : print(io, printL)
+        print(io, printLine)
+        println(io, "$(model.model_id) ($(model.type)): $(model.name) ")
     end
 
     @quiet working_copy = init_working_copy(model, structure_only = true)
@@ -53,7 +56,13 @@ function print_model_tree(model)
         node_depth = popfirst!(depth_stack)
         last = isempty(stack) || depth_stack[1] != node_depth
 
-        print_model(node, node_depth, last = last, prev_groups_closed = prev_groups_closed)
+        print_model(
+            io,
+            node,
+            node_depth,
+            last = last,
+            prev_groups_closed = prev_groups_closed,
+        )
 
         pushfirst!(stack, node.models...)
         pushfirst!(depth_stack, [node_depth + 1 for i = 1:length(node.models)]...)

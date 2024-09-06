@@ -9,6 +9,7 @@
     ode_system = (p = (;), xc0 = x0, fc = fc_ode, yc = yc_ode)
 
     buffer = IOBuffer(read = true, write = true)
+    print_model_tree(buffer, ode_system)
     out_euler = simulate(
         ode_system,
         T = T,
