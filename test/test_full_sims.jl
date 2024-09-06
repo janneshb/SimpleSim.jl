@@ -127,6 +127,12 @@
 
         out = simulate(system, T = 60 // 1, uc = (t) -> 1.0, options = (silent = true,))
         @test abs(out.ycs[end] - 1.0) < 0.01
+
+        # print the system for full coverage ;-)
+        buffer = IOBuffer()
+        print_model_tree(buffer, system)
+        @test length(take!(buffer)) > 0
+        flush(buffer)
     end
 
     @testset "Hybrid Integration" begin
