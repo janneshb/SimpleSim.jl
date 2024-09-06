@@ -1,5 +1,7 @@
 # steps a discrete-time model
 function step_dt(fd, x, u, p, t, submodel_tree, wd)
+    isnothing(x) && return nothing # state-less system
+
     fd_kwargs = length(submodel_tree) > 0 ? (models = submodel_tree,) : ()
     fd_kwargs = wd === nothing ? fd_kwargs : (fd_kwargs..., w = wd)
     return fd(x, u, p, t; fd_kwargs...)
@@ -7,9 +9,7 @@ end
 
 # steps a continuous-time model, wrapper for all continuous time integration methods
 function step_ct(Δt, fc, x, args...; integrator = RK4)
-    if x === nothing
-        return nothing, Δt # state-less system
-    end
+    isnothing(x) && return nothing, Δt # state-less system
 
     if integrator == RK4
         return step_rk4(Δt, fc, x, args...)

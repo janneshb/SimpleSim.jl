@@ -1,4 +1,5 @@
 using Test
+using Statistics
 using SimpleSim
 
 include("test_integrators.jl")
