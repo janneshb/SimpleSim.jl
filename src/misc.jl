@@ -23,6 +23,12 @@ First, the `model_id` is indicated, following the type (`TypeCT`, `TypeDT` or `T
 Then follows the name of each model in the super model.
 This is either its field name in the `NamedTuple` passed as `models` or the index in the case of vectors or tuples.
 Finally, after the slash, the type of each model is indicated. This should either be the name of a `struct` type, or `NamedTuple`.
+
+You can pass your own IO stream to `print_model_tree` as follows
+
+```julia
+print_model_tree(my_buffer, model)
+```
 """
 print_model_tree(io::IO, model) = print_model_tree(model, io = io)
 function print_model_tree(model; io = stdout)
