@@ -21,7 +21,7 @@ A similar simulation architecture was proposed by [@tuckermcclure](https://www.g
 
 - [x] Make sure the data is output as matrices and not a vector of vectors
 - [x] Check support for vector submodels
-- [ ] Write (proper) Julia tests
+- [x] Set up (proper) Julia tests
 - [x] Implement random draw hook that is invariant to model structure
 - [x] Zero-crossing detection / bouncing ball example
 - [x] Finish implementing `RKF45` for three body problem.
@@ -36,3 +36,5 @@ A similar simulation architecture was proposed by [@tuckermcclure](https://www.g
 - [x] Make public
 - [x] Add to main Julia registry
 - [x] Add badges to Readme
+- [ ] Hybrid model test
+- [ ] Discrete model test
