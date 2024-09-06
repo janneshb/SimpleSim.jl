@@ -1,5 +1,5 @@
 @testset "Full Simulations" begin
-    @testset "ODE Solving" begin
+    @testset "ODE Solver" begin
         x_exact = (x) -> tan(x)
 
         Δt_max = 1 // 100
