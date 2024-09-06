@@ -6,7 +6,7 @@ printSpace = " "
 
 export print_model_tree
 """
-    print_model_tree(model)
+    print_model_tree(model; io = stdout)
 
 Prints a _tree_ of the given model similar to a folder tree printed by the Linux `tree` command.
 
@@ -23,13 +23,12 @@ Then follows the name of each model in the super model.
 This is either its field name in the `NamedTuple` passed as `models` or the index in the case of vectors or tuples.
 Finally, after the slash, the type of each model is indicated. This should either be the name of a `struct` type, or `NamedTuple`.
 
-You can pass your own IO stream to `print_model_tree` as follows
+You can also pass your own IO stream to `print_model_tree` as follows
 
 ```julia
 print_model_tree(my_buffer, model)
 ```
 """
-print_model_tree(io::IO, model) = print_model_tree(model, io = io)
 function print_model_tree(model; io = stdout)
     function print_model(
         io,
@@ -83,3 +82,4 @@ function print_model_tree(model; io = stdout)
     end
     return nothing
 end
+print_model_tree(io::IO, model) = print_model_tree(model, io = io)
