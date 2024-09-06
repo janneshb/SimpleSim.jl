@@ -79,18 +79,76 @@
         @test maximum(abs.(out.xcs[end, :] - x0)) < 0.05
     end
 
-    @testset "Full Simulation CT" begin
+    @testset "Controlled Spring-Damper System" begin
+        fc_spring_damper = (x, u, p, t) -> [x[2], -p.k * x[1] - p.c * x[2] + u]
+        yc_spring_damper = (x, u, p, t) -> x[1]
+        spring_damper = (
+            p = (
+                k = 0.2,
+                c = 0.3,
+            ),
+            fc = fc_spring_damper,
+            yc = yc_spring_damper,
+            xc0 = [0.0, 0.0]
+        )
 
+        Δt_controller = 1 // 10
+        fd_controller = (x, u, p, t) -> [p.k_p * u + x[2] + p.k_i * p.Δt * u, x[1]]
+        yd_controller = (x, u, p, t) -> x[1]
+        controller = (
+            p = (
+                k_p = 0.002,
+                k_i = 0.035,
+                Δt = Δt_controller,
+            ),
+            fd = fd_controller,
+            yd = yd_controller,
+            Δt = Δt_controller,
+            xd0 = [0.0, 0.0],
+        )
 
+        fc_system = (x, u, p, t, models) -> nothing
+        function yc_system(x, r, p, t; models)
+            e = r - @out models.spring_damper
+            controller_y = @call! models.controller e
+            spring_damper_y = @call! models.spring_damper controller_y
+            return spring_damper_y
+        end
+
+        system = (
+            p = nothing,
+            fc = fc_system,
+            yc = yc_system,
+            models = (
+                spring_damper = spring_damper,
+                controller = controller,
+            ),
+        )
+
+        out = simulate(system, T = 60 // 1, uc = (t) -> 1.0, options = (silent = true,))
+        @test abs(out.ycs[end] - 1.0) < 0.01
     end
 
-    @testset "Full Simulation DT" begin
+    @testset "Hybrid Integration" begin
+        fc_integration = (x, u, p, t) -> 1.0
+        yc_integration = (x, u, p, t) -> x
+        fd_integration = (x, u, p, t) -> x + p.Δt
+        yd_integration = (x, u, p, t) -> x
 
-
-    end
-
-    @testset "Full Simulation Hybrid / Nested" begin
-
-
+        Δt = 1 // 10
+        hybrid_integrator = (
+            p = (
+                Δt = Δt,
+            ),
+            fc = fc_integration,
+            yc = yc_integration,
+            xc0 = 0.0,
+            fd = fd_integration,
+            yd = yd_integration,
+            xd0 = 0.0,
+            Δt = Δt,
+        )
+        out = simulate(hybrid_integrator, T = 5 // 1, options = (silent = true,))
+        @test abs(out.yds[end] - out.ycs[end]) < 1e-4
     end
 end
