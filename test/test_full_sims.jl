@@ -109,10 +109,16 @@
 
         fc_system = (x, u, p, t, models) -> nothing
         function yc_system(x, r, p, t; models)
-            e = r - @out models.spring_damper
-            controller_y = @call! models.controller e
-            spring_damper_y = @call! models.spring_damper controller_y
-            return spring_damper_y
+            xc_spring_damper = @state models.spring_damper # state CT
+            yc_spring_damper = @out models.spring_damper # out CT
+
+            xd_controller = @state models.controller
+            yd_controller = @out models.controller
+
+            e = r - yc_spring_damper
+            controller_y = @call! models.controller e # calling DT
+            spring_damper_y = @call! models.spring_damper controller_y # calling CT
+            return [spring_damper_y, xc_spring_damper..., yc_spring_damper..., xd_controller..., yd_controller...]
         end
 
         system = (
@@ -126,8 +132,12 @@
         )
 
         out = simulate(system, T = 60 // 1, uc = (t) -> 1.0, options = (silent = true,))
-        @test abs(out.ycs[end] - 1.0) < 0.01
-
+        @test abs(out.ycs[end, 1] - 1.0) < 0.01
+        
+        # test @out and @state macros
+        @test all(out.ycs[:, 2] .== out.ycs[:, 4])
+        @test all(out.ycs[:, 5] .== out.ycs[:, 7])
+        
         # print the system for full coverage ;-)
         buffer = IOBuffer()
         print_model_tree(buffer, system)
@@ -156,5 +166,9 @@
         )
         out = simulate(hybrid_integrator, T = 5 // 1, options = (silent = true,))
         @test abs(out.yds[end] - out.ycs[end]) < 1e-4
+    end
+
+    @testset "" begin
+    
     end
 end
