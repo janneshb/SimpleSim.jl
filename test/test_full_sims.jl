@@ -166,6 +166,28 @@
         )
         out = simulate(hybrid_integrator, T = 5 // 1, options = (silent = true,))
         @test abs(out.yds[end] - out.ycs[end]) < 1e-4
+
+        function fc_hybrid_integrator_parent(x, u, p, t; models)
+            # these will throw errors
+            x_sub = @state models.submodel
+            y_sub = @out models.submodel
+            return nothing
+        end
+
+        function yc_hybrid_integrator_parent(x, u, p, t; models)
+            y_sub = @call! models.submodel nothing
+            return y_sub
+        end
+
+        hybrid_integrator_parent = (
+            p = nothing,
+            fc = fc_hybrid_integrator_parent,
+            yc = yc_hybrid_integrator_parent,
+            models = (
+                submodel = hybrid_integrator,
+            ),
+        )
+        out_nested = simulate(hybrid_integrator_parent, T = 5 // 1, options = (silent = true,))
     end
 
     @testset "Parallel Submodels" begin
