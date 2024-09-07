@@ -167,8 +167,4 @@
         out = simulate(hybrid_integrator, T = 5 // 1, options = (silent = true,))
         @test abs(out.yds[end] - out.ycs[end]) < 1e-4
     end
-
-    @testset "" begin
-    
-    end
 end
