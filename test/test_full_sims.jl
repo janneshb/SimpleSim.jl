@@ -167,4 +167,66 @@
         out = simulate(hybrid_integrator, T = 5 // 1, options = (silent = true,))
         @test abs(out.yds[end] - out.ycs[end]) < 1e-4
     end
+
+    @testset "Parallel Submodels" begin
+        fc_integration = (x, u, p, t) -> 1.0
+        yc_integration = (x, u, p, t) -> x
+        fd_integration = (x, u, p, t) -> x + p.Δt
+        yd_integration = (x, u, p, t) -> x
+
+        ct_integrator = (
+            p = nothing,
+            fc = fc_integration,
+            yc = yc_integration,
+            xc0 = 0.0
+        )
+
+        Δt = 1 // 10
+        dt_integrator = (
+            p = (
+                Δt = Δt,
+            ),
+            fd = fd_integration,
+            yd = yd_integration,
+            xd0 = 0.0,
+            Δt = Δt,
+        )
+        
+        function fc_parent(x, u, p, t; models)
+            y_1 = @out models[1]
+            y_2 = @out models[2]
+
+            x_1 = @state models[1]
+            x_2 = @state models[2]
+
+            return [x_1, x_2]
+        end
+
+        function yc_parent(x, u, p, t; models)
+            y_1 = @call! models[1] nothing
+            y_2 = @call! models[2] nothing
+
+            return [y_1, y_2]
+        end
+
+        parent_1 = (
+            p = nothing,
+            fc = fc_parent,
+            yc = yc_parent,
+            models = [ct_integrator, dt_integrator]
+        )
+
+        parent_2 = (
+            p = nothing,
+            fc = fc_parent,
+            yc = yc_parent,
+            models = (ct_integrator, dt_integrator),
+        )
+
+        out_1 = simulate(parent_1, T = 5 // 1, options = (silent = true,))
+        out_2 = simulate(parent_2, T = 5 // 1, options = (silent = true,))
+
+        @test abs(out_1.ycs[end, 1] - out_1.ycs[end, 2]) < 1e-4
+        @test abs(out_2.ycs[end, 1] - out_2.ycs[end, 2]) < 1e-4
+    end
 end
