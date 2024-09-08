@@ -307,4 +307,38 @@
 
         out_mega_parent = simulate(mega_parent, T = 1 // 1, options = (silent = true,))
     end
+
+    @testset "Random Walk" begin
+        fd_random_walk = (x, u, p, t; w) -> x + w
+        yd_random_walk = (x, u, p, t; w) -> x
+        wd_random_walk = (x, u, p, t, rng) -> rand(rng, -1:1)
+
+        random_walk = (
+            p = nothing,
+            Δt = 1 // 1,
+            xd0 = 0,
+            fd = fd_random_walk,
+            yd = yd_random_walk,
+            wd = wd_random_walk,
+            wd_seed = 1234,
+        )
+        out = simulate(random_walk, T = 5 // 1, options = (silent = true,))
+        @test out.xds[end] == 1
+
+        fd_random_walk_faulty = (x, u, p, t; w) -> [x + w]
+        yd_random_walk_faulty = (x, u, p, t; w) -> x
+        wd_random_walk_faulty = (x, u, p, t, rng) -> t < 3 ? rand(rng, -1:1) : 0.5
+
+        random_walk_faulty = (
+            p = nothing,
+            Δt = 1 // 1,
+            xd0 = 0,
+            fd = fd_random_walk_faulty,
+            yd = yd_random_walk_faulty,
+            wd = wd_random_walk_faulty,
+            wd_seed = 1234,
+        )
+        out_faulty = simulate(random_walk_faulty, T = 5 // 1, options = (silent = true,))
+        @test out_faulty.xds == 0
+    end
 end
