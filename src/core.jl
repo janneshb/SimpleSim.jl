@@ -52,6 +52,8 @@ However, if necessary the following options can be passed in a `NamedTuple` to t
     Defaults to `1 // 1`.
 - `base_rng`: random number generator used for random draw functions.
     Defaults to `MersenneTwister`.
+- `out_stream`: IO stream used for console output.
+    Defaults to `stdout`.
 
 # Example with Options
 
@@ -75,11 +77,17 @@ function simulate(
     xc0 = nothing, # note: this is only valid for the top-level model. Also helpful if a stand-alone model is simulated
     xd0 = nothing,
     integrator::SimpleSimIntegrator = RK4,
+    out_stream = stdout,
     options::NamedTuple = (;),
 )
     # evaluate options, if given any
     @set_options DEFAULT_CONFIG
-    @set_options options
+    @set_options (out_stream = out_stream, options...)
+
+    min_logging_level = DEBUG ? Debug : Info
+    logger = SimpleLogger(OUT_STREAM, min_logging_level)
+    global_logger(logger)
+    @check_options options # prints warning for unsupported options
 
     DEBUG && !SILENT && print_preamble()
 
@@ -90,7 +98,9 @@ function simulate(
 
     # find smallest time-step
     Δt_max = find_min_Δt(model, Δt_max, Δt_max)
-    DEBUG && !SILENT && println("Using Δt = $Δt_max for continuous-time models.")
+    DEBUG &&
+        !SILENT &&
+        println(OUT_STREAM, "Using Δt = $Δt_max for continuous-time models.")
 
     # if RKF45 is used, times are kept as floats instead of Rationals to avoid overflow
     if integrator == RKF45
@@ -119,10 +129,10 @@ function simulate(
         simulation_is_running, t = loop!(model_working_copy, uc, ud, t, Δt_max, T)
     end
 
-    DEBUG && !SILENT && println("Simulation has terminated.")
-    DEBUG && !SILENT && println("Processing simulation logs...")
+    DEBUG && !SILENT && println(OUT_STREAM, "Simulation has terminated.")
+    DEBUG && !SILENT && println(OUT_STREAM, "Processing simulation logs...")
     out = post_process(model_working_copy)
-    DEBUG && !SILENT && println("Done!")
+    DEBUG && !SILENT && println(OUT_STREAM, "Done!")
     return out
 end
 
@@ -144,6 +154,7 @@ function loop!(model_working_copy, uc, ud, t, Δt_max, T)
         div(t_next, PROGRESS_SPACING * oneunit(Δt)) !=
         div(t_next - Δt, PROGRESS_SPACING * oneunit(Δt)) ?
     println(
+        OUT_STREAM,
         "t = ",
         round(float(t_next), digits = max(-floor(Int, log10(PROGRESS_SPACING)), 0)),
     ) : nothing

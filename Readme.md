@@ -2,7 +2,7 @@
 
 [![](https://img.shields.io/badge/docs-online-blue.svg)](https://janneshb.github.io/SimpleSim.jl/dev/)
 [![JuliaTest](https://github.com/janneshb/SimpleSim.jl/workflows/CI/badge.svg)](https://github.com/janneshb/SimpleSim.jl/actions)
-[![codecov](https://codecov.io/github/janneshb/SimpleSim.jl/branch/main/graph/badge.svg?token=SVKB74R3FY)](https://codecov.io/github/janneshb/SimpleSim.jl)
+[![Codecov](https://img.shields.io/codecov/c/github/janneshb/SimpleSim.jl)](https://codecov.io/gh/janneshb/SimpleSim.jl)
 
 <b>SimpleSim.jl</b> is a light-weight simulation package for dynamical systems simulation, controller synthesis and testing and robotics.
 
@@ -21,7 +21,7 @@ A similar simulation architecture was proposed by [@tuckermcclure](https://www.g
 
 - [x] Make sure the data is output as matrices and not a vector of vectors
 - [x] Check support for vector submodels
-- [ ] Write (proper) Julia tests
+- [x] Set up (proper) Julia tests
 - [x] Implement random draw hook that is invariant to model structure
 - [x] Zero-crossing detection / bouncing ball example
 - [x] Finish implementing `RKF45` for three body problem.
@@ -36,3 +36,5 @@ A similar simulation architecture was proposed by [@tuckermcclure](https://www.g
 - [x] Make public
 - [x] Add to main Julia registry
 - [x] Add badges to Readme
+- [ ] Hybrid model test
+- [ ] Discrete model test

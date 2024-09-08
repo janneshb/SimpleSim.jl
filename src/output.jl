@@ -73,10 +73,11 @@ function init_working_copy(
     model_id = MODEL_COUNT
 
     # TODO: add support for StaticArrays and better type inference
-    DEBUG && !SILENT && level == 0 ? println("Initializing models at t = ", float(t0)) :
-    nothing
+    DEBUG && !SILENT && level == 0 ?
+    println(OUT_STREAM, "Initializing models at t = ", float(t0)) : nothing
     DEBUG && !SILENT && level == 0 ?
     println(
+        OUT_STREAM,
         "Top-level model is ",
         isCT(model) ? "CT." : (isDT(model) ? "DT." : "hybrid."),
     ) : nothing
