@@ -251,4 +251,60 @@
         @test abs(out_1.ycs[end, 1] - out_1.ycs[end, 2]) < 1e-4
         @test abs(out_2.ycs[end, 1] - out_2.ycs[end, 2]) < 1e-4
     end
+
+    @testset "Faulty Simulation" begin
+        fc_minimal = (x, u, p, t) -> 1.0
+        yc_minimal = (x, u, p, t) -> x
+        minimal_ct_model = (
+            p = nothing,
+            fc = fc_minimal,
+            yc = yc_minimal,
+            xc0 = 1, # different type than needed, this should be 1.0
+        )
+
+        fd_minimal = (x, u, p, t) -> x + p.Δt
+        yd_minimal = (x, u, p, t) -> x
+        minimal_dt_model = (
+            p = (Δt = 1 // 10,),
+            fd = fd_minimal,
+            yd = yd_minimal,
+            xd0 = 1, # different type than needed, this should be 1.0
+            Δt = 1 // 10,
+        )
+
+        fc_parent = (x, u, p, t; models) -> nothing
+        function yc_parent(x, u, p, t; models)
+            for i in eachindex(models)
+                @call! models[i] nothing
+            end
+            return 1.0
+        end
+        parent = (
+            p = nothing,
+            fc = fc_parent,
+            yc = yc_parent,
+            models = (
+                minimal_ct_model,
+                minimal_dt_model,
+            )
+        )
+        
+        mega_parent = (
+            p = nothing,
+            fc = fc_parent,
+            yc = yc_parent,
+            models = (
+                parent,
+                parent,
+                minimal_ct_model,
+            )
+        )
+        
+        buffer = IOBuffer()
+        print_model_tree(buffer, mega_parent)
+        @test length(take!(buffer)) > 0
+        flush(buffer)
+
+        out_mega_parent = simulate(mega_parent, T = 1 // 1, options = (silent = true,))
+    end
 end
