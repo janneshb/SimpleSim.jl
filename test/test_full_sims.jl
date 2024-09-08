@@ -79,6 +79,32 @@
         @test maximum(abs.(out.xcs[end, :] - x0)) < 0.05
     end
 
+    @testset "Bouncing Ball with Friction (zero-crossing detection, will eventually fail)" begin
+        x0 = [0, 3.0, 3.0, 0]
+        fc_bouncing_ball(x, u, p, t) = [x[3], x[4], 0.0, -1.0 * p.g]
+        yc_bouncing_ball(x, u, p, t) = [x[1], x[2]]
+        zc_bouncing_ball(x, p, t) = x[2]
+        zc_exec_bouncing_ball(x, u, p, t) = [x[1], x[2], x[3], -p.ε * x[4]]
+
+        bouncing_ball = (
+            p = (g = 9.81, ε = 0.8),
+            xc0 = x0,
+            fc = fc_bouncing_ball,
+            yc = yc_bouncing_ball,
+            zc = zc_bouncing_ball,
+            zc_exec = zc_exec_bouncing_ball,
+        )
+
+        T = 8 // 1
+        out = simulate(
+            bouncing_ball,
+            T = T,
+            integrator = RK4,
+            Δt_max = 1 // 100,
+            options = (silent = true, zero_crossing_tol = 1e-5),
+        )
+    end
+
     @testset "Controlled Spring-Damper System" begin
         fc_spring_damper = (x, u, p, t) -> [x[2], -p.k * x[1] - p.c * x[2] + u]
         yc_spring_damper = (x, u, p, t) -> x[1]
@@ -304,8 +330,26 @@
         print_model_tree(buffer, mega_parent)
         @test length(take!(buffer)) > 0
         flush(buffer)
-
         out_mega_parent = simulate(mega_parent, T = 1 // 1, options = (silent = true,))
+
+        fd_parent = (x, u, p, t; models) -> nothing
+        function yd_parent(x, u, p, t; models)
+            for i in eachindex(models)
+                @call! models[i] nothing
+            end
+            return 1.0
+        end
+        dt_parent = (
+            p = nothing,
+            fd = fd_parent,
+            yd = yd_parent,
+            models = (
+                minimal_ct_model,
+                minimal_dt_model,
+            ),
+            Δt = 1 // 10,
+        )
+        out_dt_parent = simulate(dt_parent, T = 1 // 1, options = (silent = true,)) # this throws warnings because of calling CT models from within DT models
     end
 
     @testset "Random Walk" begin
