@@ -3,13 +3,25 @@ using SimpleSim
 
 pages = [
     "Introduction" => "index.md",
-    "Overview" => [
-        "What does `SimpleSim.jl` export?" => "overview/exports.md",
-        "Continuous-Time Models" => "overview/ct_sims.md",
-        "Discrete-Time Models" => "overview/dt_sims.md",
-        "Nested Models" => "overview/nested_sims.md",
-        "Simulating Models" => "overview/run_sims.md",
-        "Interpreting Output" => "overview/output.md",
+    "API" => "manual/api.md",
+    "Manual" => [
+        "Setting up Models" => [
+            "Continuous-Time Models" => "manual/ct_sims.md",
+            "Discrete-Time & Hybrid Models" => "manual/dt_sims.md",
+            "Nested Models" => "manual/nested_sims.md",
+            "Zero-Crossing Detection" => "manual/zero_crossing.md",
+            "Random Variables" => "manual/random_vars.md",
+        ],
+        "Running Simulations" => "manual/run_sims.md",
+        "Supported Integrators" => [
+            "Overview" => "integrators/overview.md",
+            "Euler" => "integrators/euler.md",
+            "Heun" => "integrators/heun.md",
+            "4th Order Runge-Kutta" => "integrators/rk4.md",
+            "Runge-Kutta-Fehlberg" => "integrators/rkf45.md",
+        ],
+        "Interpreting Output" => "manual/output.md",
+        "Miscellaneous" => "manual/misc.md",
     ],
     "Examples" => [
         "Minimal Example" => "examples/minimal_example.md",
@@ -18,24 +30,6 @@ pages = [
         "Random Walk" => "examples/random_walk.md",
         "Four-Rotor Drone" => "examples/four_rotor_drone.md",
     ],
-    "Running Simulations" => [
-        "Standalone Simulations" => "functions/standalone_sim.md",
-        "Nested Simulations" => "functions/nested_sim.md",
-        "Random Variables" => "functions/random_vars.md",
-        "Zero-Crossing Detection" => "functions/zero_crossing.md",
-    ],
-    "Output Handling" => [
-        "Simulation Output" => "output/simulation_output.md",
-        "`@log` macro" => "output/log.md",
-    ],
-    "Integrators" => [
-        "Overview" => "integrators/overview.md",
-        "Euler" => "integrators/euler.md",
-        "Heun" => "integrators/heun.md",
-        "4th Order Runge-Kutta" => "integrators/rk4.md",
-        "Runge-Kutta-Fehlberg" => "integrators/rkf45.md",
-    ],
-    "Miscellaneous" => "misc.md",
 ]
 
 println("Making Documentation...")
