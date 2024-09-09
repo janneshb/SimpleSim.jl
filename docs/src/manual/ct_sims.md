@@ -3,7 +3,7 @@
 Every continuous-time model consists of a dynamics model $f$ and a measurement model $g$.
 
 ```math
-\dot{x}(t) = f(x(t), u(t), p, t)
+\dot{x}(t) = f(x(t), u(t), p, t)\\
 y(t) = g(x(t), u(t), p, t)
 ```
 
@@ -61,11 +61,11 @@ my_ct_model = (
 
 __Mandatory__ fields for continuous-time models:
 
-* `p`, set to `nothing` if no parameters are needed
+* `p`, set this to `nothing` if no parameters are needed
 * `fc`, pass your dynamics function, returning the right-hand side of the ODE
 * `yc`, pass your measurement function
 
 __Optional__ fields for continuous-time models:
 
-* `xc0`, the initial state of the system, `nothing` by default. Can be overriden by initial state directly passed to the [`simulate`](@ref) function
+* `xc0`, the initial state of the system, `nothing` by default. Can be overriden by initial state directly passed to the [`simulate`](@ref) function.
 * `uc0`, the initial input of the system
