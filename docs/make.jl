@@ -3,8 +3,8 @@ using SimpleSim
 
 pages = [
     "Introduction" => "index.md",
+    "API" => "manual/api.md",
     "Manual" => [
-        "API" => "manual/api.md",
         "Setting up Models" => [
             "Continuous-Time Models" => "manual/ct_sims.md",
             "Discrete-Time & Hybrid Models" => "manual/dt_sims.md",
