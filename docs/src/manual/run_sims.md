@@ -20,3 +20,5 @@ __Supported__ Keywords with no Effect for DT Simulations:
 * `xc0` initial state only used for continuous-time models
 * `integator` no integrator is used for discrete-time simulations
 * `Δt_max` only relevant for integrators and therefore irrelevant for discrete-time models
+
+## TODO: add some more info
