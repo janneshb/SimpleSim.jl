@@ -109,24 +109,17 @@
         fc_spring_damper = (x, u, p, t) -> [x[2], -p.k * x[1] - p.c * x[2] + u]
         yc_spring_damper = (x, u, p, t) -> x[1]
         spring_damper = (
-            p = (
-                k = 0.2,
-                c = 0.3,
-            ),
+            p = (k = 0.2, c = 0.3),
             fc = fc_spring_damper,
             yc = yc_spring_damper,
-            xc0 = [0.0, 0.0]
+            xc0 = [0.0, 0.0],
         )
 
         Δt_controller = 1 // 10
         fd_controller = (x, u, p, t) -> [p.k_p * u + x[2] + p.k_i * p.Δt * u, x[1]]
         yd_controller = (x, u, p, t) -> x[1]
         controller = (
-            p = (
-                k_p = 0.002,
-                k_i = 0.035,
-                Δt = Δt_controller,
-            ),
+            p = (k_p = 0.002, k_i = 0.035, Δt = Δt_controller),
             fd = fd_controller,
             yd = yd_controller,
             Δt = Δt_controller,
@@ -144,26 +137,29 @@
             e = r - yc_spring_damper
             controller_y = @call! models.controller e # calling DT
             spring_damper_y = @call! models.spring_damper controller_y # calling CT
-            return [spring_damper_y, xc_spring_damper..., yc_spring_damper..., xd_controller..., yd_controller...]
+            return [
+                spring_damper_y,
+                xc_spring_damper...,
+                yc_spring_damper...,
+                xd_controller...,
+                yd_controller...,
+            ]
         end
 
         system = (
             p = nothing,
             fc = fc_system,
             yc = yc_system,
-            models = (
-                spring_damper = spring_damper,
-                controller = controller,
-            ),
+            models = (spring_damper = spring_damper, controller = controller),
         )
 
         out = simulate(system, T = 60 // 1, uc = (t) -> 1.0, options = (silent = true,))
         @test abs(out.ycs[end, 1] - 1.0) < 0.01
-        
+
         # test @out and @state macros
         @test all(out.ycs[:, 2] .== out.ycs[:, 4])
         @test all(out.ycs[:, 5] .== out.ycs[:, 7])
-        
+
         # print the system for full coverage ;-)
         buffer = IOBuffer()
         print_model_tree(buffer, system)
@@ -179,9 +175,7 @@
 
         Δt = 1 // 10
         hybrid_integrator = (
-            p = (
-                Δt = Δt,
-            ),
+            p = (Δt = Δt,),
             fc = fc_integration,
             yc = yc_integration,
             xc0 = 0.0,
@@ -209,11 +203,10 @@
             p = nothing,
             fc = fc_hybrid_integrator_parent,
             yc = yc_hybrid_integrator_parent,
-            models = (
-                submodel = hybrid_integrator,
-            ),
+            models = (submodel = hybrid_integrator,),
         )
-        out_nested = simulate(hybrid_integrator_parent, T = 5 // 1, options = (silent = true,))
+        out_nested =
+            simulate(hybrid_integrator_parent, T = 5 // 1, options = (silent = true,))
     end
 
     @testset "Parallel Submodels" begin
@@ -222,24 +215,12 @@
         fd_integration = (x, u, p, t) -> x + p.Δt
         yd_integration = (x, u, p, t) -> x
 
-        ct_integrator = (
-            p = nothing,
-            fc = fc_integration,
-            yc = yc_integration,
-            xc0 = 0.0
-        )
+        ct_integrator = (p = nothing, fc = fc_integration, yc = yc_integration, xc0 = 0.0)
 
         Δt = 1 // 10
-        dt_integrator = (
-            p = (
-                Δt = Δt,
-            ),
-            fd = fd_integration,
-            yd = yd_integration,
-            xd0 = 0.0,
-            Δt = Δt,
-        )
-        
+        dt_integrator =
+            (p = (Δt = Δt,), fd = fd_integration, yd = yd_integration, xd0 = 0.0, Δt = Δt)
+
         function fc_parent(x, u, p, t; models)
             y_1 = @out models[1]
             y_2 = @out models[2]
@@ -261,7 +242,7 @@
             p = nothing,
             fc = fc_parent,
             yc = yc_parent,
-            models = [ct_integrator, dt_integrator]
+            models = [ct_integrator, dt_integrator],
         )
 
         parent_2 = (
@@ -309,23 +290,16 @@
             p = nothing,
             fc = fc_parent,
             yc = yc_parent,
-            models = (
-                minimal_ct_model,
-                minimal_dt_model,
-            )
+            models = (minimal_ct_model, minimal_dt_model),
         )
-        
+
         mega_parent = (
             p = nothing,
             fc = fc_parent,
             yc = yc_parent,
-            models = (
-                parent,
-                parent,
-                minimal_ct_model,
-            )
+            models = (parent, parent, minimal_ct_model),
         )
-        
+
         buffer = IOBuffer()
         print_model_tree(buffer, mega_parent)
         @test length(take!(buffer)) > 0
@@ -343,10 +317,7 @@
             p = nothing,
             fd = fd_parent,
             yd = yd_parent,
-            models = (
-                minimal_ct_model,
-                minimal_dt_model,
-            ),
+            models = (minimal_ct_model, minimal_dt_model),
             Δt = 1 // 10,
         )
         out_dt_parent = simulate(dt_parent, T = 1 // 1, options = (silent = true,)) # this throws warnings because of calling CT models from within DT models
