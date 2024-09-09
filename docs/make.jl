@@ -3,13 +3,13 @@ using SimpleSim
 
 pages = [
     "Introduction" => "index.md",
-    "Overview" => [
-        "What does `SimpleSim.jl` export?" => "overview/exports.md",
-        "Continuous-Time Models" => "overview/ct_sims.md",
-        "Discrete-Time Models" => "overview/dt_sims.md",
-        "Nested Models" => "overview/nested_sims.md",
-        "Simulating Models" => "overview/run_sims.md",
-        "Interpreting Output" => "overview/output.md",
+    "Manual" => [
+        "API" => "manual/api.md",
+        "Continuous-Time Models" => "manual/ct_sims.md",
+        "Discrete-Time Models" => "manual/dt_sims.md",
+        "Nested Models" => "manual/nested_sims.md",
+        "Simulating Models" => "manual/run_sims.md",
+        "Interpreting Output" => "manual/output.md",
     ],
     "Examples" => [
         "Minimal Example" => "examples/minimal_example.md",
