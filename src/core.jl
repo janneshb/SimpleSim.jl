@@ -156,7 +156,7 @@ function loop!(model_working_copy, uc, ud, t, Δt_max, T)
     println(
         OUT_STREAM,
         "t = ",
-        round(float(t_next), digits = max(-floor(Int, log10(PROGRESS_SPACING)), 0)),
+        round_unitful(float(t_next), digits = max(-floor(Int, log10(PROGRESS_SPACING)), 0)),
     ) : nothing
     return true, t_next
 end
