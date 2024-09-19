@@ -32,7 +32,7 @@ These options can be passed to the `simulate` function as the `integrator` keywo
 However, if necessary the following options can be passed in a `NamedTuple` to the `options` keyword argument.
 
 - `Δt_default`: replaces the default (maximum) step size used for continuous-time integration. Should be rational.
-    Defaults to `1 // 100`.
+    Defaults to global parameter `ΔT_DEFAULT`.
 - `Δt_min`: replaces the minimum step size used for continuous-time integration. Especially relevant for adaptive step size integrators.
     Defaults to `1 // 1_000_000`.
 - `zero_crossing_tol`: absolute tolerance used when computing the time of a zero-crossing.
@@ -72,7 +72,7 @@ function simulate(
     T,
     uc = (t) -> nothing,
     ud = (t) -> nothing,
-    Δt_max = ΔT_DEFAULT,
+    Δt_max = oneunit(T) * ΔT_DEFAULT,
     t0 = 0 // 1 * oneunit(T),
     xc0 = nothing, # note: this is only valid for the top-level model. Also helpful if a stand-alone model is simulated
     xd0 = nothing,
@@ -92,7 +92,7 @@ function simulate(
     DEBUG && !SILENT && print_preamble()
 
     # get supposed step size and end of simulation
-    Δt_max = Δt_max === nothing ? oneunit(T) * ΔT_DEFAULT : check_rational(Δt_max)
+    Δt_max = check_rational(Δt_max)
     T = check_rational(T)
     t0 = check_rational(t0)
 
