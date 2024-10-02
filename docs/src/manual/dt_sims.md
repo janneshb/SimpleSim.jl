@@ -17,7 +17,7 @@ The discrete-time dynamics
 x_{k+1} = f(x_k, u_k, p, t)
 ```
 
-are modeled in `SimpleSim.jl` using a simple Julia function.
+are modeled in `SimpleSim.jl` using a simple Julia function that returns $x_{k+1}$ as an `AbstractVector`.
 
 ```julia
 function fd_my_model(x, u, p, t)
@@ -26,7 +26,7 @@ function fd_my_model(x, u, p, t)
 end
 ```
 
-Note, that while working with time-steps $k$, the functions $f$ and $g$ still get the actual time $t$ as an input. If you want to work with integer time steps $k$ instead, make sure to use a sampling time of `1 // 1` and convert the time `t` to an integer inside your functions $f$ and $g$.
+Note, that while working with integer time-steps $k$, the functions $f$ and $g$ still accept the actual time $t$ as an input. This is more practical for most applications. If you want to work with integer time steps $k$ instead, make sure to use a sampling time of `1 // 1` and convert the time `t` to an integer inside your functions $f$ and $g$.
 
 ## Measurement Model
 
@@ -45,7 +45,7 @@ function yd_my_model(x, u, p, t)
 end
 ```
 
-(Pretty straighforward, right??)
+(Pretty straighforward, right?)
 
 ## Model Creation
 
@@ -67,15 +67,17 @@ __Mandatory__ fields for discrete-time models:
 * `p`, set this to `nothing` if no parameters are needed
 * `fd`, pass your dynamics function returning the next state
 * `yd`, pass your measurement function
-* `Δt`, the desired sampling time of the discrete-time model
+* `Δt`, the desired sampling time of the discrete-time model, use `1 // 1` for integer time steps $k$.
 
 __Optional__ fields for discrete-time models:
 
 * `xd0`, the initial state of the system, `nothing` by default. Can be overriden by initial state directly passed to the [`simulate`](@ref) function.
-* `ud0`, the initial input of the system
+* `ud0`, the initial input of the system, `nothing` by default.
 
 ## Hybrid Models
 
-Models can have both continuous-time and discrete-time dynamics. These kind of models are considered `HybridModels` by `SimpleSim.jl` and they work very similar to simply continuous-time or discrete-time models.
+Models can have both continuous-time and discrete-time dynamics. These kind of models are considered `HybridModels` by `SimpleSim.jl` and they work very similar to continuous-time or discrete-time models.
+
+Note, that for hybrid models, the mandatory fields for __both__ continuous-time and discrete-time models must be given.
 
 See [`@call_ct!`](@ref)/[`@call_dt!`](@ref), [`@out_ct`](@ref)/[`@out_dt`](@ref), and [`@state_ct`](@ref)/[`@state_dt`](@ref) for some comments about how do avoid ambiguity when working with hybrid models.
