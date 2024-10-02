@@ -1,6 +1,6 @@
 # Continuous-Time Models
 
-Every continuous-time model consists of a dynamics model $f$ and a measurement model $g$.
+We assume every continuous-time model to consist of a dynamics model $f$ and a measurement model $g$.
 
 ```math
 \dot{x}(t) = f(x(t), u(t), p, t)\\
@@ -17,7 +17,7 @@ The `SimpleSim.jl` equivalent of the first-order ordinary differential equation
 \dot{x}(t) = f(x(t), u(t), p, t)
 ```
 
-is to define a function that returns the current derivative
+is to define a function that returns the current derivative of $x$ as an `AbstractVector`.
 
 ```julia
 function fc_my_model(x, u, p, t)
@@ -36,7 +36,7 @@ The measurement model
 y(t) = g(x(t), u(t), p, t)
 ```
 
-is also implemented as a simple Julia function that returns the current output $y(t)$ given the current state $x(t)$, input $u(t)$ and time $t$, as well as the parameters $p$.
+is also implemented as a simple Julia function that returns the current output $y(t)$ given the current state $x(t)$, input $u(t)$ and time $t$, as well as the parameters $p$. The output $y$ should also be returned as an `AbstractVector`.
 
 ```julia
 function yc_my_model(x, u, p, t)
@@ -47,7 +47,7 @@ end
 
 ## Model Creation
 
-Every `SimpleSim.jl` model has to be a data structure with named fields. So, you can use a custom struct to define your models or simply use a `NamedTuple`. Structs may have some advantages when it comes to debugging your code, however, for simple examples, `NamedTuple` are more than sufficient.
+Every `SimpleSim.jl` model has to be a data structure with named fields. So, you can use a custom struct to define your models or simply use a `NamedTuple`. Structs may have some advantages when it comes to debugging your code, however, for simple examples, `NamedTuples` are more than sufficient.
 
 ```julia
 my_ct_model = (
@@ -67,5 +67,5 @@ __Mandatory__ fields for continuous-time models:
 
 __Optional__ fields for continuous-time models:
 
-* `xc0`, the initial state of the system, `nothing` by default. Can be overriden by initial state directly passed to the [`simulate`](@ref) function.
-* `uc0`, the initial input of the system
+* `xc0`, the initial state of the system, `nothing` by default. Can be overriden by an initial state directly passed to the [`simulate`](@ref) function.
+* `uc0`, the initial input of the system, `nothing` by default.
