@@ -133,7 +133,7 @@ If you used `SimpleSim.jl` in research and you are preparing a publication, plea
 
 ```
 @software{SimpleSim,
-    author = {Huehnerbein, Jannes},
+    author = {H{\"u}hnerbein, Jannes},
     title = {{SimpleSim.jl: A minimalist Julia toolbox for modular dynamical systems simulation}},
     url = {https://github.com/janneshb/SimpleSim.jl},
     version = {0.1.2},
