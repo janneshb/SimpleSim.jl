@@ -70,7 +70,7 @@ out = simulate(my_model,
 function simulate(
     model;
     T,
-    uc = (t) -> nothing,
+    uc = (t) -> nothing, # note: this input is only passed to the top-level model.
     ud = (t) -> nothing,
     Δt_max = oneunit(T) * ΔT_DEFAULT,
     t0 = 0 // 1 * oneunit(T),
