@@ -114,7 +114,6 @@ if show_plots
     t_ani, X_ani =
         @zoh history.models.inverted_pendulum.tcs history.models.inverted_pendulum.xcs 1 /
                                                                                        fps
-
     x_min = minimum(X_ani[:, 1])
     x_max = maximum(X_ani[:, 1])
     x_delta = x_max - x_min
