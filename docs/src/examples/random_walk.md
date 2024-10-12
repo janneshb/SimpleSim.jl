@@ -100,9 +100,10 @@ where `N` is the number of steps taken by the walker.
 
 The following animations show a random walk for `N = 10` and `N = 1000`.
 
-![random walk N 10](../assets/random_walk_animation_10.gif "Random Walk for `N = 10`")
-
-![random walk N 1000](../assets/random_walk_animation_1000.gif "Random Walk for `N = 1000`")
+```@raw html
+<img src="../../assets/random_walk_animation_10.gif" style="width: 50%;" align="left">
+<img src="../../assets/random_walk_animation_1000.gif" style="width: 50%;" align="right">
+```
 
 ### Switching to a different RNG
 
