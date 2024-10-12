@@ -20,15 +20,15 @@ pages = [
             "4th Order Runge-Kutta" => "integrators/rk4.md",
             "Runge-Kutta-Fehlberg" => "integrators/rkf45.md",
         ],
-        "Interpreting Output" => "manual/output.md",
+        "Simulation Output" => "manual/output.md",
         "Miscellaneous" => "manual/misc.md",
     ],
     "Examples" => [
         "Minimal Example" => "examples/minimal_example.md",
         "Bouncing Ball" => "examples/bouncing_ball.md",
-        "Feedback Control" => "examples/feedback_control.md",
         "Random Walk" => "examples/random_walk.md",
-        "Four-Rotor Drone" => "examples/four_rotor_drone.md",
+        #"Feedback Control" => "examples/feedback_control.md",
+        #"Four-Rotor Drone" => "examples/four_rotor_drone.md",
     ],
 ]
 
