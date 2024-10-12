@@ -41,7 +41,9 @@ makedocs(
     draft = false,
     pages = pages,
     format = Documenter.HTML(;
-        assets = [asset("assets/custom.css", class = :css, islocal = true)],
+        assets = [
+            asset("assets/custom.css", class = :css, islocal = true),
+        ],
         collapselevel = 3,
     ),
     warnonly = [:missing_docs, :cross_references],
