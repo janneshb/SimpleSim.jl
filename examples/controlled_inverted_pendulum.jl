@@ -53,7 +53,7 @@ end
 
 K = 1.5
 controller = (
-    p = (k_p = 30.0*K, k_i = 20.0*K, k_d = 20.0*K),
+    p = (k_p = 30.0 * K, k_i = 20.0 * K, k_d = 20.0 * K),
     xc0 = [zeros(2)...],
     uc0 = [0.0, 0.0],
     fc = fc_controls,
@@ -98,14 +98,22 @@ if show_plots
     plotlyjs()
     include("utils/zoh.jl")
 
-    ppt = plot(history.models.inverted_pendulum.tcs, history.models.inverted_pendulum.xcs[:, 3])
+    ppt = plot(
+        history.models.inverted_pendulum.tcs,
+        history.models.inverted_pendulum.xcs[:, 3],
+    )
     display(ppt)
 
-    ppx = plot(history.models.inverted_pendulum.tcs, history.models.inverted_pendulum.xcs[:, 1])
+    ppx = plot(
+        history.models.inverted_pendulum.tcs,
+        history.models.inverted_pendulum.xcs[:, 1],
+    )
     display(ppx)
 
     fps = 10
-    t_ani, X_ani = @zoh history.models.inverted_pendulum.tcs history.models.inverted_pendulum.xcs 1/fps
+    t_ani, X_ani =
+        @zoh history.models.inverted_pendulum.tcs history.models.inverted_pendulum.xcs 1 /
+                                                                                       fps
 
     x_min = minimum(X_ani[:, 1])
     x_max = maximum(X_ani[:, 1])
@@ -117,13 +125,13 @@ if show_plots
     cart_width = x_delta / 8
     cart_height = cart_width / 4
 
-    L = 4*inverted_pendulum.p.l
+    L = 4 * inverted_pendulum.p.l
 
-    rectangle(w, h, x, y) = Shape(x .+ [0,w,w,0], y .+ [0,0,h,h])
+    rectangle(w, h, x, y) = Shape(x .+ [0, w, w, 0], y .+ [0, 0, h, h])
 
     # animation of the cart / pendulum
     println("Working on animation...")
-    cart_pendulum_ani = @animate for i in 1:size(t_ani, 1)
+    cart_pendulum_ani = @animate for i = 1:size(t_ani, 1)
         x_i = X_ani[i, 1]
         θ_i = X_ani[i, 3]
 
@@ -132,13 +140,34 @@ if show_plots
         py = L * cos(θ_i)
 
         # plot the whole thing
-        plot([x_min, x_max], [0, 0], lw = 3, color="#000000", label="", aspect_ratio = 1, franestyle = :none)
-        plot!(rectangle(cart_width, cart_height, x_i - cart_width/2, -cart_height/2), label="", color="#000000",) # cart
-        plot!([x_i, px], [0, py], lw=2, label="", color="#000000") # pendulum rod
-        scatter!([px], [py], markersize=5, label="", framestyle=:none, size=(500, 500), dpi=10, color="#000000") # bob
+        plot(
+            [x_min, x_max],
+            [0, 0],
+            lw = 3,
+            color = "#000000",
+            label = "",
+            aspect_ratio = 1,
+            franestyle = :none,
+        )
+        plot!(
+            rectangle(cart_width, cart_height, x_i - cart_width / 2, -cart_height / 2),
+            label = "",
+            color = "#000000",
+        ) # cart
+        plot!([x_i, px], [0, py], lw = 2, label = "", color = "#000000") # pendulum rod
+        scatter!(
+            [px],
+            [py],
+            markersize = 5,
+            label = "",
+            framestyle = :none,
+            size = (500, 500),
+            dpi = 10,
+            color = "#000000",
+        ) # bob
 
         xlims!(x_min - L, x_max + L)
-        ylims!(-1.5*L, 1.5*L)
+        ylims!(-1.5 * L, 1.5 * L)
     end
 
     gif(cart_pendulum_ani, "examples/plots/pendulum_cart.gif", fps = fps)

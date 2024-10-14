@@ -25,7 +25,7 @@ pages = [
     ],
     "Examples" => [
         "Minimal Example" => "examples/minimal_example.md",
-        "Bouncing Ball" => "examples/bouncing_ball.md",
+        #"Bouncing Ball" => "examples/bouncing_ball.md",
         "Random Walk" => "examples/random_walk.md",
         #"Feedback Control" => "examples/feedback_control.md",
         #"Four-Rotor Drone" => "examples/four_rotor_drone.md",
@@ -41,9 +41,7 @@ makedocs(
     draft = false,
     pages = pages,
     format = Documenter.HTML(;
-        assets = [
-            asset("assets/custom.css", class = :css, islocal = true),
-        ],
+        assets = [asset("assets/custom.css", class = :css, islocal = true)],
         collapselevel = 3,
     ),
     warnonly = [:missing_docs, :cross_references],
