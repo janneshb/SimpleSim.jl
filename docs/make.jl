@@ -25,7 +25,7 @@ pages = [
     ],
     "Examples" => [
         "Minimal Example" => "examples/minimal_example.md",
-        "Bouncing Ball" => "examples/bouncing_ball.md",
+        #"Bouncing Ball" => "examples/bouncing_ball.md",
         "Random Walk" => "examples/random_walk.md",
         #"Feedback Control" => "examples/feedback_control.md",
         #"Four-Rotor Drone" => "examples/four_rotor_drone.md",
