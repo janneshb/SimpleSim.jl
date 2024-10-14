@@ -35,7 +35,7 @@ falling_object = (
     fc = fc_falling_object,
     yc = yc_falling_object,
 )
-````
+```
 
 Which can be simulated as
 ```julia
