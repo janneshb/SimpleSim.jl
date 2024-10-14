@@ -1,6 +1,13 @@
 using SimpleSim
 
-show_plots = false
+"""
+    Bouncing Ball
+
+    This file simulates a ball bouncing down a flight of stairs.
+    This is mainly to demonstrate the zero-crossing detection capabilities of SimpleSim.jl.
+"""
+
+show_plots = true
 
 stairs(x) = -round(x)
 
@@ -27,18 +34,45 @@ T = 11 // 1
 
 history = simulate(bouncing_ball, T = T, integrator = RK4, options = (silent = true,))
 
+include("utils/zoh.jl")
+tcs_zoh, xcs_zoh = @zoh history.tcs history.xcs 1 // 20
+
 if show_plots
     using Plots
     plotlyjs()
-    p1 = plot(
-        history.xcs[:, 1],
-        history.xcs[:, 2],
-        aspect_ratio = :equal,
-        xlabel = "x",
-        ylabel = "y",
-    )
-    p1 = plot!(p1, history.xcs[:, 1], stairs.(history.xcs[:, 1]))
-    display(p1)
+
+    T_animation = float(T)
+    fps = Int(round(length(tcs_zoh) / T_animation))
+
+    animation = @animate for (i, t_i) in enumerate(tcs_zoh)
+        p1 = plot(layout = (1, 1))
+        plot!(p1,
+            xcs_zoh[1:i, 1],
+            xcs_zoh[1:i, 2],
+            aspect_ratio = :equal,
+            xlabel = "x",
+            ylabel = "y",
+        )
+
+        plot!(p1[1], xcs_zoh[:, 1], stairs.(xcs_zoh[:, 1]))
+
+        scatter!(
+            p1[1],
+            [xcs_zoh[i, 1]],
+            [xcs_zoh[i, 2]],
+            markersize = 7,
+            label = "",
+            framestyle = :none,
+            size = (500, 500),
+            dpi = 10,
+            color = "#000000",
+        ) # bob
+
+        xlims!(p1[1], 1.1*minimum(xcs_zoh[:, 1]), 1.1*maximum(xcs_zoh[:, 1]))
+        ylims!(p1[1], 1.1*minimum(xcs_zoh[:, 2]), 1.1*maximum(xcs_zoh[:, 2]))
+    end
+    ani = gif(animation, "examples/plots/bouncing_ball.gif", fps = fps)
+    display(ani)
 
     p2 = plot(
         history.tcs[1:end-1],
