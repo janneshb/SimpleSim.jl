@@ -46,7 +46,8 @@ if show_plots
 
     animation = @animate for (i, t_i) in enumerate(tcs_zoh)
         p1 = plot(layout = (1, 1))
-        plot!(p1,
+        plot!(
+            p1,
             xcs_zoh[1:i, 1],
             xcs_zoh[1:i, 2],
             aspect_ratio = :equal,
@@ -68,8 +69,8 @@ if show_plots
             color = "#000000",
         ) # bob
 
-        xlims!(p1[1], 1.1*minimum(xcs_zoh[:, 1]), 1.1*maximum(xcs_zoh[:, 1]))
-        ylims!(p1[1], 1.1*minimum(xcs_zoh[:, 2]), 1.1*maximum(xcs_zoh[:, 2]))
+        xlims!(p1[1], 1.1 * minimum(xcs_zoh[:, 1]), 1.1 * maximum(xcs_zoh[:, 1]))
+        ylims!(p1[1], 1.1 * minimum(xcs_zoh[:, 2]), 1.1 * maximum(xcs_zoh[:, 2]))
     end
     ani = gif(animation, "examples/plots/bouncing_ball.gif", fps = fps)
     display(ani)
