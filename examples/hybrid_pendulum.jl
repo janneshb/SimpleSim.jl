@@ -7,8 +7,8 @@ fc_pendulum(x, u, p, t) = [x[2], -p.λ * x[2] - p.ω2 * sin(x[1])]
 fd_pendulum(x, u, p, t) = p.A * x
 
 # measurement model
-yc_pendulum(x, u, p, t) = x
-yd_pendulum(x, u, p, t) = x
+gc_pendulum(x, u, p, t) = x
+gd_pendulum(x, u, p, t) = x
 
 x0 = [
     30.0 * π / 180.0,   #*s/s,
@@ -31,8 +31,8 @@ pendulum_hybrid = (
     xd0 = x0,
     fc = fc_pendulum,
     fd = fd_pendulum,
-    yc = yc_pendulum,
-    yd = yd_pendulum,
+    gc = gc_pendulum,
+    gd = gd_pendulum,
 )
 
 

@@ -41,7 +41,7 @@ end
 The output only contains the current RPM.
 
 ```julia
-yc_motor = (ω, r_ω, p, t) -> p.direction * ω[1]
+gc_motor = (ω, r_ω, p, t) -> p.direction * ω[1]
 ```
 
 We can then create a motor model. The parameters $\tau$, $\zeta$ and $k$ are identified using system identification techniques. All motors are assumed to standing still at the beginning of the simulation.
@@ -56,7 +56,7 @@ motor_1 = (
         direction = 1.0,
     ),
     fc = fc_motor,
-    yc = yc_motor,
+    gc = gc_motor,
     xc0 = [0.0, 0.0],
     uc0 = 0.0,
 )
@@ -88,7 +88,7 @@ Thrust always acts downwards in the drone's frame of reference. Torque depends o
 ```julia
 fc_prop = (x, ω, p, t) -> nothing
 
-yc_prop = (x, ω, p, t) -> [p.k_f2 * ω^2, p.k_t * ω]
+gc_prop = (x, ω, p, t) -> [p.k_f2 * ω^2, p.k_t * ω]
 ```
 
 We expect thrust to be proportional to the square of the rate of rotation, while torque behaves approximately linear with respect to $\omega$. The slopes $k_{f, 2}$ and $k_t$ are given as parameters.
@@ -100,7 +100,7 @@ prop_1 = (
         k_t = 2e-5,
     ),
     fc = fc_prop,
-    yc = yc_prop,
+    gc = gc_prop,
     uc0 = 0.0,
 )
 prop_2 = prop_1
@@ -115,12 +115,12 @@ We assume the motors provide RPM feedback. But the sensor for that is digital an
 ```julia
 fd_sensor = (x, ω, p, t) -> nothing
 
-yd_sensor = (x, ω, p, t) -> ω
+gd_sensor = (x, ω, p, t) -> ω
 
 sensor_1 = (
     p = nothing,
     fd = fd_sensor,
-    yd = yd_sensor,
+    gd = gd_sensor,
     Δt = 1 // 100,
     ud0 = 0.0,
 )
@@ -139,7 +139,7 @@ This model is not strictly necessary. However, to showcase the modularity of `Si
 ```julia
 fc_powered_prop = (x, u, p, t; models) -> nothing
 
-function yc_powered_prop(x, r_ω, p, t; models)
+function gc_powered_prop(x, r_ω, p, t; models)
     ω = @call! models.motor r_ω
     ft = @call! models.prop ω
     ω_measurement = @call! models.sensor ω
@@ -150,7 +150,7 @@ end
 powered_prop_1 = (
     p = nothing,
     fc = fc_powered_prop,
-    yc = yc_powered_prop,
+    gc = gc_powered_prop,
     uc0 = 0.0,
     models = (
         motor = motor_1,
@@ -181,7 +181,7 @@ Note, that since the propellers are excerted from the drone's center of gravity 
 ```julia
 fc_airframe = (x, u, p, t; models) -> nothing
 
-function yc_airframe(x, r_ω, p, t; models)
+function gc_airframe(x, r_ω, p, t; models)
     ft_ω_1 = @call! models.powered_prop_1 r_ω[1]
     ft_ω_2 = @call! models.powered_prop_2 r_ω[2]
     ft_ω_3 = @call! models.powered_prop_3 r_ω[3]
@@ -205,7 +205,7 @@ airframe = (
         x_prop_4_B = [10e-2, -10e-2, 0.0],
     ),
     fc = fc_airframe,
-    yc = yc_airframe,
+    gc = gc_airframe,
     uc0 = [0.0, 0.0, 0.0, 0.0],
     models = (
         powered_prop_1 = powered_prop_1,
@@ -227,7 +227,7 @@ function fc_rigid_body(x, u, p, t)
 
 end
 
-yc_rigid_body = (x, u, p, t) -> x
+gc_rigid_body = (x, u, p, t) -> x
 
 rigid_body = (
     p = (
@@ -237,7 +237,7 @@ rigid_body = (
         ],
     ),
     fc = fc_rigid_body,
-    yc = yc_rigid_body,
+    gc = gc_rigid_body,
     xc0 = [],
     uc0 = [],
 )

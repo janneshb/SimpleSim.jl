@@ -39,7 +39,7 @@ y(t) = g(x(t), u(t), p, t)
 is also implemented as a simple Julia function that returns the current output $y(t)$ given the current state $x(t)$, input $u(t)$ and time $t$, as well as the parameters $p$. The output $y$ should also be returned as an `AbstractVector`.
 
 ```julia
-function yc_my_model(x, u, p, t)
+function gc_my_model(x, u, p, t)
     my_output = # ...
     return my_output
 end
@@ -53,7 +53,7 @@ Every `SimpleSim.jl` model has to be a data structure with named fields. So, you
 my_ct_model = (
     p = nothing,
     fc = fc_my_model,
-    yc = yc_my_model,
+    gc = gc_my_model,
     xc0 = my_initial_state,
     uc0 = my_initial_input,
 )
@@ -63,7 +63,7 @@ __Mandatory__ fields for continuous-time models:
 
 * `p`, set this to `nothing` if no parameters are needed
 * `fc`, pass your dynamics function, returning the right-hand side of the ODE
-* `yc`, pass your measurement function
+* `gc`, pass your measurement function
 
 __Optional__ fields for continuous-time models:
 

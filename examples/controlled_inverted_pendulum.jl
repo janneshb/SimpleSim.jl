@@ -28,14 +28,14 @@ function fc_inv_pendulum(x, u, p, t)
     return [dz, ddz, dθ, ddθ]
 end
 
-yc_inv_pendulum(x, u, p, t) = [x[3], x[4]]
+gc_inv_pendulum(x, u, p, t) = [x[3], x[4]]
 
 inverted_pendulum = (
     p = (g = 9.81, l = 0.5, m = 0.3),
     xc0 = [0.0, 0.0, deg2rad(10.0), 0.0],
     uc0 = 0.0,
     fc = fc_inv_pendulum,
-    yc = yc_inv_pendulum,
+    gc = gc_inv_pendulum,
 )
 
 # CONTROLLER
@@ -44,7 +44,7 @@ function fc_controls(x, e, p, t)
     return [e[2], e[1]]
 end
 
-function yc_controls(x, e, p, t)
+function gc_controls(x, e, p, t)
     p_part = p.k_p * x[1]
     i_part = p.k_i * x[2]
     d_part = p.k_d * e[2]
@@ -57,7 +57,7 @@ controller = (
     xc0 = [zeros(2)...],
     uc0 = [0.0, 0.0],
     fc = fc_controls,
-    yc = yc_controls,
+    gc = gc_controls,
 )
 
 # CONTROLLED SYSTEM
@@ -66,7 +66,7 @@ function fc_controlled_system(x, r, p, t; models)
     return nothing # state-less, will not even be called
 end
 
-function yc_controlled_system(x, w, p, t; models)
+function gc_controlled_system(x, w, p, t; models)
     # compute error --> input to controller
     # note: e also contains ė
     r = [0.0, 0.0]
@@ -84,7 +84,7 @@ end
 
 controlled_system = (
     fc = fc_controlled_system,
-    yc = yc_controlled_system,
+    gc = gc_controlled_system,
     p = (),
     models = (inverted_pendulum = inverted_pendulum, controller = controller),
 )
@@ -114,7 +114,6 @@ if show_plots
     t_ani, X_ani =
         @zoh history.models.inverted_pendulum.tcs history.models.inverted_pendulum.xcs 1 /
                                                                                        fps
-
     x_min = minimum(X_ani[:, 1])
     x_max = maximum(X_ani[:, 1])
     x_delta = x_max - x_min

@@ -6,7 +6,7 @@ show_plots = false
 fd_pendulum(x, u, p, t) = p.A * x
 
 # measurement model
-yd_pendulum(x, u, p, t) = x
+gd_pendulum(x, u, p, t) = x
 
 x0 = [
     30.0 * π / 180.0,   #*s/s,
@@ -21,7 +21,7 @@ pendulum_discrete = (
     xd0 = x0,
     Δt = Δt,
     fd = fd_pendulum,
-    yd = yd_pendulum,
+    gd = gd_pendulum,
 )
 
 

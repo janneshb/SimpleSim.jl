@@ -16,7 +16,7 @@ my_system = (
     xd0 = # ...
     ud0 = # ...
     fd = # ...
-    yd = # ...
+    gd = # ...
     wd = my_random_wd,
 )
 ```
@@ -24,14 +24,14 @@ my_system = (
 The function `wd_random_draws` takes in the usual argument and a random number generator `rng`.
 The random number generator can be used in the random draw function to generate any number of random draws using available techniques, e. g. the `Distributions` package.
 
-Then, `SimpleSim.jl` passes the random draw to the `fd` and `yd` functions in the keyword argument `w`.
+Then, `SimpleSim.jl` passes the random draw to the `fd` and `gd` functions in the keyword argument `w`.
 
 ```julia
 function my_fd(x, u, p, t; w)
     # ...
 end
 
-function my_yd(x, u, p, t; w)
+function my_gd(x, u, p, t; w)
     # ...
 end
 ```

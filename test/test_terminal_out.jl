@@ -4,9 +4,9 @@
     T = 15 // 10
     x0 = 0.0
     fc_ode(x, u, p, t) = 1 + x * x
-    yc_ode(x, u, p, t) = x
+    gc_ode(x, u, p, t) = x
 
-    ode_system = (p = (;), xc0 = x0, fc = fc_ode, yc = yc_ode)
+    ode_system = (p = (;), xc0 = x0, fc = fc_ode, gc = gc_ode)
 
     buffer = IOBuffer(read = true, write = true)
     print_model_tree(buffer, ode_system)

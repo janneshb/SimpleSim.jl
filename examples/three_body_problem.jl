@@ -24,7 +24,7 @@ function fc_three_bodies(x, u, p, t)
     return vcat(x[7:end], r_1_dd, r_2_dd, r_3_dd)
 end
 
-function yc_three_bodies(x, u, p, t)
+function gc_three_bodies(x, u, p, t)
     return x[1:6]
 end
 
@@ -51,7 +51,7 @@ three_bodies = (
     ),
     xc0 = x0,
     fc = fc_three_bodies,
-    yc = yc_three_bodies,
+    gc = gc_three_bodies,
 )
 
 T = 27 // 1

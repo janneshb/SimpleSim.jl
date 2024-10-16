@@ -23,19 +23,19 @@ end
 function isCT(model)
     return (
         hasproperty(model, :fc) &&
-        hasproperty(model, :yc) &&
+        hasproperty(model, :gc) &&
         model.fc !== nothing &&
-        model.yc !== nothing
+        model.gc !== nothing
     ) || (hasproperty(model, :type) && model.type == TypeCT::ModelType)
 end
 
 function isDT(model)
     return (
         hasproperty(model, :fd) &&
-        hasproperty(model, :yd) &&
+        hasproperty(model, :gd) &&
         hasproperty(model, :Δt) &&
         model.fd !== nothing &&
-        model.yd !== nothing &&
+        model.gd !== nothing &&
         model.Δt !== nothing
     ) || (hasproperty(model, :type) && model.type == TypeDT::ModelType)
 end
@@ -45,14 +45,14 @@ function isHybrid(model)
         (
             hasproperty(model, :fd) &&
             hasproperty(model, :fc) &&
-            hasproperty(model, :yd) &&
-            hasproperty(model, :yc) &&
+            hasproperty(model, :gd) &&
+            hasproperty(model, :gc) &&
             hasproperty(model, :Δt)
         ) && (
             model.fd !== nothing &&
             model.fc !== nothing &&
-            model.yd !== nothing &&
-            model.yc !== nothing &&
+            model.gd !== nothing &&
+            model.gc !== nothing &&
             model.Δt !== nothing
         )
     ) || (hasproperty(model, :type) && model.type == TypeHybrid::ModelType)

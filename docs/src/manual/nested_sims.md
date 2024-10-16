@@ -45,7 +45,7 @@ Any of the above can be passed to the parent model as follows.
 my_ct_model = (
     p = nothing,
     fc = fc_my_model,
-    yc = yc_my_model,
+    gc = gc_my_model,
     xc0 = my_initial_state,
     uc0 = my_initial_input,
     models = my_submodels,
@@ -56,11 +56,11 @@ my_ct_model = (
 
 Only the top-level passed to the `simulate` function is actively called by `SimpleSim.jl`. Submodels must be called by their respective parent model.
 
-This is done using the `@call!` macro and can only be done from within the `yc` and `yd` functions. Calls from inside `fc` or `fd` are not allowed for technical reasons.
+This is done using the `@call!` macro and can only be done from within the `gc` and `gd` functions. Calls from inside `fc` or `fd` are not allowed for technical reasons.
 
 An example of how to call a submodel is given below.
 ```julia
-function yc_my_model(x, u, p, t; models)
+function gc_my_model(x, u, p, t; models)
     my_submodel_input = # ...
 
     # if `models` is a Vector or Tuple

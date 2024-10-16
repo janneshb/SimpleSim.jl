@@ -5,23 +5,23 @@ show_plots = false
 function fc_inner_hybrid(x, u, p, t)
     return 1.0
 end
-yc_inner_hybrid(x, u, p, t) = x
+gc_inner_hybrid(x, u, p, t) = x
 
 function fd_inner_hybrid(x, u, p, t)
     return t
 end
-yd_inner_hybrid(x, u, p, t) = x
+gd_inner_hybrid(x, u, p, t) = x
 
 inner_hybrid = (
     p = (),
     xc0 = 0.0,
     uc0 = 0.0,
     fc = fc_inner_hybrid,
-    yc = yc_inner_hybrid,
+    gc = gc_inner_hybrid,
     xd0 = 0.0,
     ud0 = 0.0,
     fd = fd_inner_hybrid,
-    yd = yd_inner_hybrid,
+    gd = gd_inner_hybrid,
     Δt = 5 // 10,
 )
 
@@ -30,18 +30,18 @@ function fd_inner_dt2(x, u, p, t)
     return t
 end
 
-function yd_inner_dt2(x, u, p, t)
+function gd_inner_dt2(x, u, p, t)
     return x
 end
 inner_dt2 =
-    (p = (), xd0 = 0.0, ud0 = 0.0, fd = fd_inner_dt2, yd = yd_inner_dt2, Δt = 1 // 10)
+    (p = (), xd0 = 0.0, ud0 = 0.0, fd = fd_inner_dt2, gd = gd_inner_dt2, Δt = 1 // 10)
 
 
 function fd_inner_dt(x, u, p, t; models)
     return t
 end
 
-function yd_inner_dt(x, u, p, t; models)
+function gd_inner_dt(x, u, p, t; models)
     y2 = @call! models.inner_dt2 0.0
     return y2
 end
@@ -50,7 +50,7 @@ inner_dt = (
     xd0 = 0.0,
     ud0 = 0.0,
     fd = fd_inner_dt,
-    yd = yd_inner_dt,
+    gd = gd_inner_dt,
     Δt = 3 // 10,
     models = (inner_dt2 = inner_dt2,),
 )
@@ -58,7 +58,7 @@ inner_dt = (
 
 fc_wrapper(x, u, p, t; models) = nothing
 
-function yc_wrapper(x, u, p, t; models)
+function gc_wrapper(x, u, p, t; models)
     y_ct_inner = @call_ct! models.inner_hybrid 0.0
     y_dt_inner = @call_dt! models.inner_hybrid 0.0
     y_dt_inner2 = @call! models.inner_dt 0.0
@@ -67,7 +67,7 @@ end
 wrapper = (
     p = (),
     fc = fc_wrapper,
-    yc = yc_wrapper,
+    gc = gc_wrapper,
     models = (inner_hybrid = inner_hybrid, inner_dt = inner_dt),
 )
 

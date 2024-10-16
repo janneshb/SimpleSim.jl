@@ -161,20 +161,20 @@ function loop!(model_working_copy, uc, ud, t, Δt_max, T)
     return true, t_next
 end
 
-# Calls a model (runs it, if its due) and returns its output. Should be used within yc and yd.
+# Calls a model (runs it, if its due) and returns its output. Should be used within gc and gd.
 export @call!, @call_ct!, @call_dt!
 """
     @call! model u
 
 The `@call!` macro is crucial for running simulations with submodels.
-In the parent model's `yc` or `yd` function every one of its submodels must be called using `@call!`.
+In the parent model's `gc` or `gd` function every one of its submodels must be called using `@call!`.
 Otherwise the submodels will not be updated.
 
 Returns the output of `model` after the update. Use [`@state`](@ref) after calling `@call!` to access the new state.
 
 # Example
 ```julia
-function yc_parent_model(x, u, p, t; models)
+function gc_parent_model(x, u, p, t; models)
     # ...
     y_child = @call! models[1] u_child
     # ...
@@ -310,8 +310,8 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt, integrator, T
             xc_next = model.zc_exec(xc_next, uc, model.p, t_next) # apply zero crossing change
             yc_next =
                 length(submodels) > 0 ?
-                model.yc(xc_next, uc, model.p, t_next; models = submodels) :
-                model.yc(xc_next, uc, model.p, t_next)
+                model.gc(xc_next, uc, model.p, t_next; models = submodels) :
+                model.gc(xc_next, uc, model.p, t_next)
             Δt_post_zc = model_working_copy.tcs[end] + Δt_actual - t_next
             update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next, T)
 
@@ -330,8 +330,8 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt, integrator, T
         end
         yc_next =
             length(submodels) > 0 ?
-            model.yc(xc_next, uc, model.p, t_next; models = submodels) :
-            model.yc(xc_next, uc, model.p, t_next)
+            model.gc(xc_next, uc, model.p, t_next; models = submodels) :
+            model.gc(xc_next, uc, model.p, t_next)
         update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next, T)
         updated_state = true
     end
@@ -360,9 +360,9 @@ function model_callable_dt!(ud, t, model, model_working_copy, T)
             submodels,
             wd_next,
         )
-        yd_kwargs = length(submodels) > 0 ? (models = submodels,) : ()
-        yd_kwargs = wd_next === nothing ? yd_kwargs : (yd_kwargs..., w = wd_next)
-        yd_next = model.yd(xd_next, ud, model.p, t; yd_kwargs...)
+        gd_kwargs = length(submodels) > 0 ? (models = submodels,) : ()
+        gd_kwargs = wd_next === nothing ? gd_kwargs : (gd_kwargs..., w = wd_next)
+        yd_next = model.gd(xd_next, ud, model.p, t; gd_kwargs...)
         update_working_copy_dt!(model_working_copy, t, xd_next, yd_next, wd_next, T)
         updated_state = true
     end

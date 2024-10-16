@@ -66,7 +66,7 @@ In summary, a model with zero-crossing detection could look something like this.
 my_ct_model = (
     p = nothing,
     fc = fc_my_model,
-    yc = yc_my_model,
+    gc = gc_my_model,
     zc = zc_my_model,
     zc_exec = zc_exec_my_model,
     xc0 = my_initial_state,
