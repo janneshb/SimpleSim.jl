@@ -1,7 +1,7 @@
 name = "SimpleSim"
 uuid = "b9efc609-bc7d-446c-95a0-c858d8725e88"
 authors = ["Jannes Huehnerbein <j.huehnerbein@icloud.com>"]
-version = "0.1.3"
+version = "0.1.4"
 
 [deps]
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"

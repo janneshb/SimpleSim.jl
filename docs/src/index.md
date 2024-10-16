@@ -136,7 +136,7 @@ If you used `SimpleSim.jl` in research and you are preparing a publication, plea
     author = {H{\"u}hnerbein, Jannes},
     title = {{S}imple{S}im.jl: {A} minimalist {J}ulia package for modular dynamical systems simulation},
     url = {https://github.com/janneshb/SimpleSim.jl},
-    version = {0.1.3},
+    version = {0.1.4},
     year = {2024},
     month = {04},
 }
