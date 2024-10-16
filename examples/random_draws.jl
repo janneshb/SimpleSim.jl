@@ -5,7 +5,7 @@ function fd_random_draws(x, u, p, t; w)
     return x
 end
 
-function yd_random_draws(x, u, p, t; w)
+function gd_random_draws(x, u, p, t; w)
     return x
 end
 
@@ -18,7 +18,7 @@ random_draws = (
     Δt = 1 // 10,
     xd0 = 0.0,
     fd = fd_random_draws,
-    yd = yd_random_draws,
+    gd = gd_random_draws,
     wd = wd_random_draws,
 )
 

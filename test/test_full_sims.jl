@@ -6,9 +6,9 @@
         T = 15 // 10
         x0 = 0.0
         fc_ode(x, u, p, t) = 1 + x * x
-        yc_ode(x, u, p, t) = x
+        gc_ode(x, u, p, t) = x
 
-        ode_system = (p = (;), xc0 = x0, fc = fc_ode, yc = yc_ode)
+        ode_system = (p = (;), xc0 = x0, fc = fc_ode, gc = gc_ode)
 
         out_euler = simulate(
             ode_system,
@@ -55,7 +55,7 @@
     @testset "Fricton-less Bouncing Ball (zero-crossing detection)" begin
         x0 = [0, 3.0, 0, 0]
         fc_bouncing_ball(x, u, p, t) = [x[3], x[4], 0.0, -1.0 * p.g]
-        yc_bouncing_ball(x, u, p, t) = [x[1], x[2]]
+        gc_bouncing_ball(x, u, p, t) = [x[1], x[2]]
         zc_bouncing_ball(x, p, t) = x[2]
         zc_exec_bouncing_ball(x, u, p, t) = [x[1], x[2], x[3], -p.ε * x[4]]
 
@@ -63,7 +63,7 @@
             p = (g = 9.81, ε = 1.0),
             xc0 = x0,
             fc = fc_bouncing_ball,
-            yc = yc_bouncing_ball,
+            gc = gc_bouncing_ball,
             zc = zc_bouncing_ball,
             zc_exec = zc_exec_bouncing_ball,
         )
@@ -82,7 +82,7 @@
     @testset "Bouncing Ball with Friction (zero-crossing detection, will eventually fail)" begin
         x0 = [0, 3.0, 3.0, 0]
         fc_bouncing_ball(x, u, p, t) = [x[3], x[4], 0.0, -1.0 * p.g]
-        yc_bouncing_ball(x, u, p, t) = [x[1], x[2]]
+        gc_bouncing_ball(x, u, p, t) = [x[1], x[2]]
         zc_bouncing_ball(x, p, t) = x[2]
         zc_exec_bouncing_ball(x, u, p, t) = [x[1], x[2], x[3], -p.ε * x[4]]
 
@@ -90,7 +90,7 @@
             p = (g = 9.81, ε = 0.8),
             xc0 = x0,
             fc = fc_bouncing_ball,
-            yc = yc_bouncing_ball,
+            gc = gc_bouncing_ball,
             zc = zc_bouncing_ball,
             zc_exec = zc_exec_bouncing_ball,
         )
@@ -107,27 +107,27 @@
 
     @testset "Controlled Spring-Damper System" begin
         fc_spring_damper = (x, u, p, t) -> [x[2], -p.k * x[1] - p.c * x[2] + u]
-        yc_spring_damper = (x, u, p, t) -> x[1]
+        gc_spring_damper = (x, u, p, t) -> x[1]
         spring_damper = (
             p = (k = 0.2, c = 0.3),
             fc = fc_spring_damper,
-            yc = yc_spring_damper,
+            gc = gc_spring_damper,
             xc0 = [0.0, 0.0],
         )
 
         Δt_controller = 1 // 10
         fd_controller = (x, u, p, t) -> [p.k_p * u + x[2] + p.k_i * p.Δt * u, x[1]]
-        yd_controller = (x, u, p, t) -> x[1]
+        gd_controller = (x, u, p, t) -> x[1]
         controller = (
             p = (k_p = 0.002, k_i = 0.035, Δt = Δt_controller),
             fd = fd_controller,
-            yd = yd_controller,
+            gd = gd_controller,
             Δt = Δt_controller,
             xd0 = [0.0, 0.0],
         )
 
         fc_system = (x, u, p, t, models) -> nothing
-        function yc_system(x, r, p, t; models)
+        function gc_system(x, r, p, t; models)
             xc_spring_damper = @state models.spring_damper # state CT
             yc_spring_damper = @out models.spring_damper # out CT
 
@@ -149,7 +149,7 @@
         system = (
             p = nothing,
             fc = fc_system,
-            yc = yc_system,
+            gc = gc_system,
             models = (spring_damper = spring_damper, controller = controller),
         )
 
@@ -169,18 +169,18 @@
 
     @testset "Hybrid Integration" begin
         fc_integration = (x, u, p, t) -> 1.0
-        yc_integration = (x, u, p, t) -> x
+        gc_integration = (x, u, p, t) -> x
         fd_integration = (x, u, p, t) -> x + p.Δt
-        yd_integration = (x, u, p, t) -> x
+        gd_integration = (x, u, p, t) -> x
 
         Δt = 1 // 10
         hybrid_integrator = (
             p = (Δt = Δt,),
             fc = fc_integration,
-            yc = yc_integration,
+            gc = gc_integration,
             xc0 = 0.0,
             fd = fd_integration,
-            yd = yd_integration,
+            gd = gd_integration,
             xd0 = 0.0,
             Δt = Δt,
         )
@@ -194,7 +194,7 @@
             return nothing
         end
 
-        function yc_hybrid_integrator_parent(x, u, p, t; models)
+        function gc_hybrid_integrator_parent(x, u, p, t; models)
             y_sub = @call! models.submodel nothing
             return y_sub
         end
@@ -202,7 +202,7 @@
         hybrid_integrator_parent = (
             p = nothing,
             fc = fc_hybrid_integrator_parent,
-            yc = yc_hybrid_integrator_parent,
+            gc = gc_hybrid_integrator_parent,
             models = (submodel = hybrid_integrator,),
         )
         out_nested =
@@ -211,15 +211,15 @@
 
     @testset "Parallel Submodels" begin
         fc_integration = (x, u, p, t) -> 1.0
-        yc_integration = (x, u, p, t) -> x
+        gc_integration = (x, u, p, t) -> x
         fd_integration = (x, u, p, t) -> x + p.Δt
-        yd_integration = (x, u, p, t) -> x
+        gd_integration = (x, u, p, t) -> x
 
-        ct_integrator = (p = nothing, fc = fc_integration, yc = yc_integration, xc0 = 0.0)
+        ct_integrator = (p = nothing, fc = fc_integration, gc = gc_integration, xc0 = 0.0)
 
         Δt = 1 // 10
         dt_integrator =
-            (p = (Δt = Δt,), fd = fd_integration, yd = yd_integration, xd0 = 0.0, Δt = Δt)
+            (p = (Δt = Δt,), fd = fd_integration, gd = gd_integration, xd0 = 0.0, Δt = Δt)
 
         function fc_parent(x, u, p, t; models)
             y_1 = @out models[1]
@@ -231,7 +231,7 @@
             return [x_1, x_2]
         end
 
-        function yc_parent(x, u, p, t; models)
+        function gc_parent(x, u, p, t; models)
             y_1 = @call! models[1] nothing
             y_2 = @call! models[2] nothing
 
@@ -241,14 +241,14 @@
         parent_1 = (
             p = nothing,
             fc = fc_parent,
-            yc = yc_parent,
+            gc = gc_parent,
             models = [ct_integrator, dt_integrator],
         )
 
         parent_2 = (
             p = nothing,
             fc = fc_parent,
-            yc = yc_parent,
+            gc = gc_parent,
             models = (ct_integrator, dt_integrator),
         )
 
@@ -261,26 +261,26 @@
 
     @testset "Faulty Simulation" begin
         fc_minimal = (x, u, p, t) -> 1.0
-        yc_minimal = (x, u, p, t) -> x
+        gc_minimal = (x, u, p, t) -> x
         minimal_ct_model = (
             p = nothing,
             fc = fc_minimal,
-            yc = yc_minimal,
+            gc = gc_minimal,
             xc0 = 1, # different type than needed, this should be 1.0
         )
 
         fd_minimal = (x, u, p, t) -> x + p.Δt
-        yd_minimal = (x, u, p, t) -> x
+        gd_minimal = (x, u, p, t) -> x
         minimal_dt_model = (
             p = (Δt = 1 // 10,),
             fd = fd_minimal,
-            yd = yd_minimal,
+            gd = gd_minimal,
             xd0 = 1, # different type than needed, this should be 1.0
             Δt = 1 // 10,
         )
 
         fc_parent = (x, u, p, t; models) -> nothing
-        function yc_parent(x, u, p, t; models)
+        function gc_parent(x, u, p, t; models)
             for i in eachindex(models)
                 @call! models[i] nothing
             end
@@ -289,14 +289,14 @@
         parent = (
             p = nothing,
             fc = fc_parent,
-            yc = yc_parent,
+            gc = gc_parent,
             models = (minimal_ct_model, minimal_dt_model),
         )
 
         mega_parent = (
             p = nothing,
             fc = fc_parent,
-            yc = yc_parent,
+            gc = gc_parent,
             models = (parent, parent, minimal_ct_model),
         )
 
@@ -307,7 +307,7 @@
         out_mega_parent = simulate(mega_parent, T = 1 // 1, options = (silent = true,))
 
         fd_parent = (x, u, p, t; models) -> nothing
-        function yd_parent(x, u, p, t; models)
+        function gd_parent(x, u, p, t; models)
             for i in eachindex(models)
                 @call! models[i] nothing
             end
@@ -316,7 +316,7 @@
         dt_parent = (
             p = nothing,
             fd = fd_parent,
-            yd = yd_parent,
+            gd = gd_parent,
             models = (minimal_ct_model, minimal_dt_model),
             Δt = 1 // 10,
         )
@@ -325,7 +325,7 @@
 
     @testset "Random Walk" begin
         fd_random_walk = (x, u, p, t; w) -> x + w
-        yd_random_walk = (x, u, p, t; w) -> x
+        gd_random_walk = (x, u, p, t; w) -> x
         wd_random_walk = (x, u, p, t, rng) -> rand(rng, -1:1)
 
         random_walk = (
@@ -333,7 +333,7 @@
             Δt = 1 // 1,
             xd0 = 0,
             fd = fd_random_walk,
-            yd = yd_random_walk,
+            gd = gd_random_walk,
             wd = wd_random_walk,
             wd_seed = 1234,
         )
@@ -341,7 +341,7 @@
         @test out.xds[end] == 1
 
         fd_random_walk_faulty = (x, u, p, t; w) -> [x + w]
-        yd_random_walk_faulty = (x, u, p, t; w) -> x
+        gd_random_walk_faulty = (x, u, p, t; w) -> x
         wd_random_walk_faulty = (x, u, p, t, rng) -> t < 3 ? rand(rng, -1:1) : 0.5
 
         random_walk_faulty = (
@@ -349,7 +349,7 @@
             Δt = 1 // 1,
             xd0 = 0,
             fd = fd_random_walk_faulty,
-            yd = yd_random_walk_faulty,
+            gd = gd_random_walk_faulty,
             wd = wd_random_walk_faulty,
             wd_seed = 1234,
         )

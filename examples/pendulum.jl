@@ -6,7 +6,7 @@ show_plots = false
 fc_pendulum(x, u, p, t) = [x[2], -p.λ * x[2] - p.ω2 * sin(x[1])]
 
 # measurement model
-yc_pendulum(x, u, p, t) = x
+gc_pendulum(x, u, p, t) = x
 
 x0 = [
     30.0 * π / 180.0,   #*s/s,
@@ -21,7 +21,7 @@ pendulum = (
     ),
     xc0 = x0,
     fc = fc_pendulum,
-    yc = yc_pendulum,
+    gc = gc_pendulum,
 )
 
 

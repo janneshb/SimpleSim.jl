@@ -4,11 +4,11 @@ show_plots = false
 
 fc_adaptive_step(x, u, p, t) = 1 + x * x
 
-yc_adaptive_step(x, u, p, t) = x
+gc_adaptive_step(x, u, p, t) = x
 
 x0 = 0.0
 
-adaptive_step = (p = (), xc0 = x0, fc = fc_adaptive_step, yc = yc_adaptive_step)
+adaptive_step = (p = (), xc0 = x0, fc = fc_adaptive_step, gc = gc_adaptive_step)
 
 T = 15 // 10
 

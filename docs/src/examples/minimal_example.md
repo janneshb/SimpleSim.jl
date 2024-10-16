@@ -24,7 +24,7 @@ The gravitational constant is stored in the model as a parameter.
 The output of our system will simply be the current position of the object, i. e. $z_1$.
 
 ```julia
-yc_falling_object = (z, u, p, t) -> z[1]
+gc_falling_object = (z, u, p, t) -> z[1]
 ```
 
 Now, the whole model can be written as
@@ -33,7 +33,7 @@ Now, the whole model can be written as
 falling_object = (
     p = (g = 9.81,),
     fc = fc_falling_object,
-    yc = yc_falling_object,
+    gc = gc_falling_object,
 )
 ```
 

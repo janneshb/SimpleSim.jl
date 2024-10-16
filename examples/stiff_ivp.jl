@@ -7,12 +7,12 @@ function fc_stiff_ivp(x, u, p, t)
     return x_dot
 end
 
-function yc_stiff_ivp(x, u, p, t)
+function gc_stiff_ivp(x, u, p, t)
     return x
 end
 
 x0 = 1.0
-stiff_ivp = (p = (), xc0 = x0, fc = fc_stiff_ivp, yc = yc_stiff_ivp)
+stiff_ivp = (p = (), xc0 = x0, fc = fc_stiff_ivp, gc = gc_stiff_ivp)
 
 T = 10 // 1
 Δt = 5 // 100

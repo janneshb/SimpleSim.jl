@@ -39,7 +39,7 @@ y_k = g(x_k, u_k, p, t)
 is also given by a simple Julia function
 
 ```julia
-function yd_my_model(x, u, p, t)
+function gd_my_model(x, u, p, t)
     my_output = # ...
     return my_output
 end
@@ -55,7 +55,7 @@ Similar to continuous-time models, `SimpleSim.jl` supports all types of models t
 my_dt_model = (
     p = nothing,
     fd = fd_my_model,
-    yd = yd_my_model,
+    gd = gd_my_model,
     Δt = Δt_my_model,
     xd0 = my_initial_state,
     ud0 = my_initial_input,
@@ -66,7 +66,7 @@ __Mandatory__ fields for discrete-time models:
 
 * `p`, set this to `nothing` if no parameters are needed
 * `fd`, pass your dynamics function returning the next state
-* `yd`, pass your measurement function
+* `gd`, pass your measurement function
 * `Δt`, the desired sampling time of the discrete-time model, use `1 // 1` for integer time steps $k$.
 
 __Optional__ fields for discrete-time models:

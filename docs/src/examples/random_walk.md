@@ -38,7 +38,7 @@ function fd_random_walk(x, u, p, t; w)
     return x + w
 end
 
-yd_random_walk = (x, u, p, t; w) -> x
+gd_random_walk = (x, u, p, t; w) -> x
 ```
 
 The probabilities $p_i$ for the 4 state transitions are stored in the parameters `p`.
@@ -76,7 +76,7 @@ seed = 1234
 random_walk_model = (
     p = params,
     fd = fd_random_walk,
-    yd = yd_random_walk,
+    gd = gd_random_walk,
     wd = wd_random_walk,
     wd_seed = seed,
     xd0 = [0, 0],

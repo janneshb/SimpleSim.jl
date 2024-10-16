@@ -24,7 +24,7 @@ A simple example of a dynamical systems model accepted by `SimpleSim.jl` would b
 my_model = (
     p = nothing,
     fc = dynamics_function,
-    yc = measurement_function,
+    gc = measurement_function,
 )
 ```
 where we pass `nothing` as the parameters of the model (i.e. we don't need any parameters right now) and two functions `dynamics_function` and `measurement_function` that we defined elsewhere.
@@ -54,7 +54,7 @@ dt_measurement_function = (x, u, p, t) -> ...
 my_dt_model = (
     p = nothing,
     fd = next_state_function,
-    yd = dt_measurement_function,
+    gd = dt_measurement_function,
     Δt = 1 // 10,
 )
 ```
@@ -84,7 +84,7 @@ add the keyword argument `xc0 =` or `xd0 =` to set the initial state of your con
 submodel_1 = (
     p = nothing,
     fc = ...,
-    yc = ...,
+    gc = ...,
 )
 
 submodel_2 = ...
@@ -92,7 +92,7 @@ submodel_2 = ...
 parent_model = (
     p = nothing,
     fc = fc_parent,
-    yc = yc_parent,
+    gc = gc_parent,
     models = (
         model_1 = submodel_1,
         model_2 = submodel_2,
@@ -102,10 +102,10 @@ parent_model = (
 
 Now, `parent_model` has two submodels. Note, that submodels are not updated automatically. They have to be _called_ by their parent model. Only the top-level model passed to `simulate` is actively updated by `SimpleSim.jl`.
 
-For calling a submodel, use the `@call!` macro from within a `yc` function and add the input you want to give the submodel.
+For calling a submodel, use the `@call!` macro from within a `gc` function and add the input you want to give the submodel.
 
 ```julia
-function yc_parent(x, u, p, t; models)
+function gc_parent(x, u, p, t; models)
     u_1 = ...
     y_submodel_1 = @call! models.model_1 u_1
 
@@ -116,7 +116,7 @@ function yc_parent(x, u, p, t; models)
 end
 ```
 
-Calls can only be made from within a `yc` function. Not from within an `fc` function. To obtain the current output of a submodel without updating it, use the `@out` macro.
+Calls can only be made from within a `gc` function. Not from within an `fc` function. To obtain the current output of a submodel without updating it, use the `@out` macro.
 
 ```julia
 function fc_parent(x, u, p, t; models)

@@ -98,10 +98,10 @@ function init_working_copy(
         uc0 === nothing ?
         (hasproperty(model, :uc0) && model.uc0 !== nothing ? model.uc0 : nothing) : uc0
     ycs0 =
-        !structure_only && hasproperty(model, :yc) && model.yc !== nothing ?
+        !structure_only && hasproperty(model, :gc) && model.gc !== nothing ?
         (
-            length(sub_tree) > 0 ? [model.yc(xc0, uc0, model.p, t0; models = sub_tree)] :
-            [model.yc(xc0, uc0, model.p, t0)]
+            length(sub_tree) > 0 ? [model.gc(xc0, uc0, model.p, t0; models = sub_tree)] :
+            [model.gc(xc0, uc0, model.p, t0)]
         ) : nothing
 
     xd0 =
@@ -111,11 +111,11 @@ function init_working_copy(
         uc0 === nothing ?
         (hasproperty(model, :ud0) && model.ud0 !== nothing ? model.ud0 : nothing) : ud0
     wd0 = hasproperty(model, :wd) ? model.wd(xd0, ud0, model.p, t0, rng_dt) : nothing
-    yd_kwargs = length(sub_tree) > 0 ? (models = sub_tree,) : ()
-    yd_kwargs = hasproperty(model, :wd) ? (yd_kwargs..., w = wd0) : yd_kwargs
+    gd_kwargs = length(sub_tree) > 0 ? (models = sub_tree,) : ()
+    gd_kwargs = hasproperty(model, :wd) ? (gd_kwargs..., w = wd0) : gd_kwargs
     yds0 =
-        !structure_only && hasproperty(model, :yd) && model.yd !== nothing ?
-        [model.yd(xd0, ud0, model.p, t0; yd_kwargs...)] : nothing
+        !structure_only && hasproperty(model, :gd) && model.gd !== nothing ?
+        [model.gd(xd0, ud0, model.p, t0; gd_kwargs...)] : nothing
 
     type = begin
         temp_type = TypeUnknown::ModelType
@@ -148,14 +148,14 @@ function init_working_copy(
                             model.zero_crossing_tol !== nothing ? model.zero_crossing_tol :
                             ZERO_CROSSING_TOL,
         # the following store the latest state
-        tcs = !structure_only && hasproperty(model, :yc) && model.yc !== nothing ? [t0] :
+        tcs = !structure_only && hasproperty(model, :gc) && model.gc !== nothing ? [t0] :
               nothing,
         xcs = !structure_only &&
               hasproperty(model, :fc) &&
               model.fc !== nothing &&
               xc0 !== nothing ? [xc0] : nothing,
         ycs = ycs0,
-        tds = !structure_only && hasproperty(model, :yd) && model.yd !== nothing ? [t0] :
+        tds = !structure_only && hasproperty(model, :gd) && model.gd !== nothing ? [t0] :
               nothing,
         xds = !structure_only &&
               hasproperty(model, :fd) &&
