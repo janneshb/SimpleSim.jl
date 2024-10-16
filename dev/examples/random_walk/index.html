@@ -8,7 +8,7 @@ p_r &amp; \text{if } X = [1, 0]^T
     return x + w
 end
 
-yd_random_walk = (x, u, p, t; w) -&gt; x</code></pre><p>The probabilities <span>$p_i$</span> for the 4 state transitions are stored in the parameters <code>p</code>.</p><pre><code class="language-julia hljs">params = (
+gd_random_walk = (x, u, p, t; w) -&gt; x</code></pre><p>The probabilities <span>$p_i$</span> for the 4 state transitions are stored in the parameters <code>p</code>.</p><pre><code class="language-julia hljs">params = (
     p_f = 0.25,
     p_b = 0.25,
     p_l = 0.25,
@@ -28,7 +28,7 @@ end</code></pre><p>The model then can be defined as follows</p><pre><code class=
 random_walk_model = (
     p = params,
     fd = fd_random_walk,
-    yd = yd_random_walk,
+    gd = gd_random_walk,
     wd = wd_random_walk,
     wd_seed = seed,
     xd0 = [0, 0],
@@ -42,4 +42,4 @@ data = simulate(random_walk_model,
     options = (
         base_rng = Xoshiro,
     )
-)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../minimal_example/">« Minimal Example</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.7.0 on <span class="colophon-date" title="Monday 14 October 2024 21:27">Monday 14 October 2024</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../minimal_example/">« Minimal Example</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.7.0 on <span class="colophon-date" title="Wednesday 16 October 2024 23:35">Wednesday 16 October 2024</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
