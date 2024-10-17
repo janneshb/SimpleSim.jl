@@ -35,6 +35,8 @@ include("access.jl")
 include("info.jl")
 include("output.jl")
 include("integrators.jl")
+include("models.jl")
+include("convert.jl")
 include("misc.jl")
 include("preamble.jl")
 

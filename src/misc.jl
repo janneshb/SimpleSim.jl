@@ -83,3 +83,5 @@ function print_model_tree(model; io = stdout)
     return nothing
 end
 print_model_tree(io::IO, model) = print_model_tree(model, io = io)
+
+Base.show(io::IO, model::T) where {T <: AbstractModel} = print_model_tree(io, model)
