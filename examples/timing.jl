@@ -1,4 +1,5 @@
 using SimpleSim
+using Profile, ProfileView
 
 show_plots = false
 
@@ -71,7 +72,7 @@ wrapper = (
     models = (inner_hybrid = inner_hybrid, inner_dt = inner_dt),
 )
 
-history = simulate(wrapper, T = 3 // 1)
+ProfileView.@profview history = simulate(wrapper, T = 3 // 1)
 
 if show_plots
     using Plots
