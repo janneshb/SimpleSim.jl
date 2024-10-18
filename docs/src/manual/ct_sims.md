@@ -26,7 +26,7 @@ function fc_my_model(x, u, p, t)
 end
 ```
 
-Implicit differential equations $0 = F(\dot{x}, x, u, p, t)$ are not supported.
+Implicit differential equations $0 = F(\dot{x}, x, u, p, t)$ are not supported (yet...).
 
 ## Measurement Model
 
@@ -69,3 +69,5 @@ __Optional__ fields for continuous-time models:
 
 * `xc0`, the initial state of the system, `nothing` by default. Can be overriden by an initial state directly passed to the [`simulate`](@ref) function.
 * `uc0`, the initial input of the system, `nothing` by default.
+* `zc`, function that returns a scalar and will be watched by `SimpleSim.jl` to detect zero-crossings.
+* `zc_exec`, function that returns a post-zero-crossing state

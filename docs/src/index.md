@@ -18,7 +18,7 @@ The main point of interaction with the `SimpleSim.jl` framework is the `simulate
 
 ### Continuous-Time Systems
 
-A simple example of a dynamical systems model accepted by `SimpleSim.jl` would be
+A simple example of a dynamical system model accepted by `SimpleSim.jl` would be
 
 ```julia
 my_model = (

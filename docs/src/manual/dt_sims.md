@@ -73,6 +73,8 @@ __Optional__ fields for discrete-time models:
 
 * `xd0`, the initial state of the system, `nothing` by default. Can be overriden by initial state directly passed to the [`simulate`](@ref) function.
 * `ud0`, the initial input of the system, `nothing` by default.
+* `wd`, function `(x, u, p, t, rng) -> ...` that returns a random draw. The random draw will be passed as a keyword argument `w` to `fd` and `gd`.
+* `wd_seed`, the seed used for _this model's_ random number generator
 
 ## Hybrid Models
 

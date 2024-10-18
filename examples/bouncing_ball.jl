@@ -7,7 +7,7 @@ using SimpleSim
     This is mainly to demonstrate the zero-crossing detection capabilities of SimpleSim.jl.
 """
 
-show_plots = true
+show_plots = false
 
 stairs(x) = -round(x)
 

@@ -1,6 +1,6 @@
 using SimpleSim
 
-show_plots = true
+show_plots = false
 
 # PLANT
 #
