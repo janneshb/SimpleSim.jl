@@ -8,7 +8,7 @@ function gc_inner(x, u, p, t)
     return x
 end
 
-inner_model = (p = nothing, fc = fc_inner, gc = gc_inner, xc0 = 1.0)
+inner_model = (fc = fc_inner, gc = gc_inner, xc0 = 1.0)
 
 
 function fd_outer(x, u, p, t; models)
@@ -20,12 +20,7 @@ function gd_outer(x, u, p, t; models)
     return y_inner
 end
 
-outer_model = (
-    p = nothing,
-    fd = fd_outer,
-    gd = gd_outer,
-    Δt = 1 // 5,
-    models = (inner_model = inner_model,),
-)
+outer_model =
+    (fd = fd_outer, gd = gd_outer, Δt = 1 // 5, models = (inner_model = inner_model,))
 
 simulate(outer_model, T = 10 // 1)

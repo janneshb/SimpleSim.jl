@@ -147,7 +147,6 @@
         end
 
         system = (
-            p = nothing,
             fc = fc_system,
             gc = gc_system,
             models = (spring_damper = spring_damper, controller = controller),
@@ -200,7 +199,6 @@
         end
 
         hybrid_integrator_parent = (
-            p = nothing,
             fc = fc_hybrid_integrator_parent,
             gc = gc_hybrid_integrator_parent,
             models = (submodel = hybrid_integrator,),
@@ -215,7 +213,7 @@
         fd_integration = (x, u, p, t) -> x + p.Δt
         gd_integration = (x, u, p, t) -> x
 
-        ct_integrator = (p = nothing, fc = fc_integration, gc = gc_integration, xc0 = 0.0)
+        ct_integrator = (fc = fc_integration, gc = gc_integration, xc0 = 0.0)
 
         Δt = 1 // 10
         dt_integrator =
@@ -238,19 +236,9 @@
             return [y_1, y_2]
         end
 
-        parent_1 = (
-            p = nothing,
-            fc = fc_parent,
-            gc = gc_parent,
-            models = [ct_integrator, dt_integrator],
-        )
+        parent_1 = (fc = fc_parent, gc = gc_parent, models = [ct_integrator, dt_integrator])
 
-        parent_2 = (
-            p = nothing,
-            fc = fc_parent,
-            gc = gc_parent,
-            models = (ct_integrator, dt_integrator),
-        )
+        parent_2 = (fc = fc_parent, gc = gc_parent, models = (ct_integrator, dt_integrator))
 
         out_1 = simulate(parent_1, T = 5 // 1, options = (silent = true,))
         out_2 = simulate(parent_2, T = 5 // 1, options = (silent = true,))
@@ -263,7 +251,6 @@
         fc_minimal = (x, u, p, t) -> 1.0
         gc_minimal = (x, u, p, t) -> x
         minimal_ct_model = (
-            p = nothing,
             fc = fc_minimal,
             gc = gc_minimal,
             xc0 = 1, # different type than needed, this should be 1.0
@@ -286,19 +273,11 @@
             end
             return 1.0
         end
-        parent = (
-            p = nothing,
-            fc = fc_parent,
-            gc = gc_parent,
-            models = (minimal_ct_model, minimal_dt_model),
-        )
+        parent =
+            (fc = fc_parent, gc = gc_parent, models = (minimal_ct_model, minimal_dt_model))
 
-        mega_parent = (
-            p = nothing,
-            fc = fc_parent,
-            gc = gc_parent,
-            models = (parent, parent, minimal_ct_model),
-        )
+        mega_parent =
+            (fc = fc_parent, gc = gc_parent, models = (parent, parent, minimal_ct_model))
 
         buffer = IOBuffer()
         print_model_tree(buffer, mega_parent)
@@ -314,7 +293,6 @@
             return 1.0
         end
         dt_parent = (
-            p = nothing,
             fd = fd_parent,
             gd = gd_parent,
             models = (minimal_ct_model, minimal_dt_model),
@@ -329,7 +307,6 @@
         wd_random_walk = (x, u, p, t, rng) -> rand(rng, -1:1)
 
         random_walk = (
-            p = nothing,
             Δt = 1 // 1,
             xd0 = 0,
             fd = fd_random_walk,
@@ -345,7 +322,6 @@
         wd_random_walk_faulty = (x, u, p, t, rng) -> t < 3 ? rand(rng, -1:1) : 0.5
 
         random_walk_faulty = (
-            p = nothing,
             Δt = 1 // 1,
             xd0 = 0,
             fd = fd_random_walk_faulty,
