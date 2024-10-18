@@ -36,6 +36,7 @@ include("info.jl")
 include("output.jl")
 include("integrators.jl")
 include("misc.jl")
+include("analysis.jl")
 include("preamble.jl")
 
 end # module SimpleSim
