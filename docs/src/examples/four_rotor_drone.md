@@ -1,6 +1,6 @@
 # Four-Rotor Drone
 
-In this example, a four-rotor drone, just as the ones you can buy from various manufacturers, is set up. The drone involves the following individual models:
+In this example, a four-rotor drone, just as the , is set up. Roughly speaking, the drone involves the following individual models:
 
 * a rigid body
 * motors
@@ -11,6 +11,14 @@ In this example, a four-rotor drone, just as the ones you can buy from various m
 Some of these models only consist of continuous-time or discrete-time dynamics, other might have both.
 
 Of course, the system's complexity can be increased arbitrarily.
+
+A rough block diagram of the system is given below.
+
+```@raw html
+<object class="pdf" data="../../assets/FourRotorDrone.pdf" style="width: 100%; align: center; min-height: 350px;"></object>
+<br>
+Click <a href="../../assets/FourRotorDrone.pdf" target="_blank">here</a> to open the diagram in a new tab for closer inspection.
+```
 
 ## Motors
 
@@ -243,11 +251,13 @@ rigid_body = (
 )
 ```
 
-## GPS, Accelerometer and Gyroscope
+## Sensor Suite
 
 
+## State Estimation
 
-## The Control System
+
+## Control System
 
 
 ## Putting it all together
@@ -258,3 +268,9 @@ the_drone = (
     )
 )
 ```
+
+## Adding an Atmosphere
+
+## Remote Controls
+
+## Software in the Loop
