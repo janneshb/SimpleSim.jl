@@ -166,7 +166,7 @@ if perform_tests
         out_airframe.tcs,
         norm.([out_airframe.ycs[i, 1:3] for i = 1:size(out_airframe.ycs, 1)]),
         title = "Prop Tests: Total Thrust",
-        name="f",
+        name = "f",
     )
     display(p1)
 
@@ -174,7 +174,7 @@ if perform_tests
         out_airframe.tcs,
         norm.([out_airframe.ycs[i, 4:6] for i = 1:size(out_airframe.ycs, 1)]),
         title = "Prop Tests: Total Torque",
-        name="τ",
+        name = "τ",
     )
     display(p2)
 
