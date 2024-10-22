@@ -220,6 +220,23 @@ function update_working_copy_dt!(model_working_copy, t, xd, yd, wd, T)
     end
 end
 
+# takes a vector of vector (considered a timeseries) and returns it in matrix form
+function post_process_time_series(ts; name = "")
+    matrix_form = nothing
+    try
+        matrix_form = ts !== nothing ? reduce(vcat, transpose.(ts)) : nothing
+    catch err
+        !SILENT &&
+            DEBUG &&
+            @error "Could not post-process time series data $name. Full Error: " exception =
+                (err, catch_backtrace())
+        !SILENT &&
+            !DEBUG &&
+            @error "Could not post-process time series data $name. Check this state/output for consistent types (and vector lengths). Set DEBUG=true for full error message."
+    end
+    return matrix_form
+end
+
 # reduce output and cast time series into matrix form
 function post_process(out)
     function post_process_submodels(models::NamedTuple)
@@ -238,12 +255,12 @@ function post_process(out)
         model_id = out.model_id,
         Δt = hasproperty(out, :Δt) && out.Δt !== nothing ? out.Δt : Δt,
         tcs = out.tcs,
-        xcs = out.xcs !== nothing ? reduce(vcat, transpose.(out.xcs)) : nothing,
-        ycs = out.ycs !== nothing ? reduce(vcat, transpose.(out.ycs)) : nothing,
+        xcs = post_process_time_series(out.xcs, name = "model $(out.model_id) xcs"),
+        ycs = post_process_time_series(out.ycs, name = "model $(out.model_id) ycs"),
         tds = out.tds,
-        xds = out.xds !== nothing ? reduce(vcat, transpose.(out.xds)) : nothing,
-        yds = out.yds !== nothing ? reduce(vcat, transpose.(out.yds)) : nothing,
-        wds = out.wds !== nothing ? reduce(vcat, transpose.(out.wds)) : nothing,
+        xds = post_process_time_series(out.xds, name = "model $(out.model_id) xds"),
+        yds = post_process_time_series(out.yds, name = "model $(out.model_id) yds"),
+        wds = post_process_time_series(out.wds, name = "model $(out.model_id) wds"),
         models = post_process_submodels(out.models),
     )
 end

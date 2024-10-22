@@ -1,5 +1,12 @@
 using SimpleSim
 
+"""
+    Discrete Linear Pendulum
+
+    This file simulates the natural response of a
+    discrete linearization of the nonliear pendulum.
+"""
+
 show_plots = false
 
 # dynamic rule for the damped pendulum

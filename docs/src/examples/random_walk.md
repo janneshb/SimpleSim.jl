@@ -102,7 +102,7 @@ The following animations show a random walk for `N = 10` and `N = 1000`.
 
 ```@raw html
 <img src="../../assets/random_walk_animation_10.gif" style="width: 50%;" align="left">
-<img src="../../assets/random_walk_animation_1000.gif" style="width: 50%;" align="right">
+<img src="../../assets/random_walk_animation_1000.gif" style="width: 50%;" align="right"><br><br>
 ```
 
 ### Switching to a different RNG

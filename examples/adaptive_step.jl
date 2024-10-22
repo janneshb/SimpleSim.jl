@@ -1,4 +1,14 @@
 using SimpleSim
+using BenchmarkTools
+
+"""
+    Adaptive Step Demonstration
+
+    This example implements the differential equation x' = 1 + x^2.
+    The ODE is solved using different solvers and the results are plotted (if show_plots = true).
+
+    From the plots it is obvious that the adaptive RKF45 algorithm performs best.
+"""
 
 show_plots = false
 
@@ -12,10 +22,22 @@ adaptive_step = (p = (), xc0 = x0, fc = fc_adaptive_step, gc = gc_adaptive_step)
 
 T = 15 // 10
 
-out_euler = simulate(adaptive_step, T = T, integrator = Euler)
-out_heun = simulate(adaptive_step, T = T, integrator = Heun)
-out_rk4 = simulate(adaptive_step, T = T, integrator = RK4)
-out_rkf45 = simulate(adaptive_step, T = T, integrator = RKF45)
+println("Simulating via Euler method...")
+out_euler =
+    @btime simulate(adaptive_step, T = T, integrator = Euler, options = (silent = true,))
+
+println("Simulating via Heun method...")
+out_heun =
+    @btime simulate(adaptive_step, T = T, integrator = Heun, options = (silent = true,))
+
+println("Simulating via RK4 method...")
+out_rk4 =
+    @btime simulate(adaptive_step, T = T, integrator = RK4, options = (silent = true,))
+
+println("Simulating via adaptive RKF45 method...")
+out_rkf45 =
+    @btime simulate(adaptive_step, T = T, integrator = RKF45, options = (silent = true,))
+
 out_exact = (tcs = out_rkf45.tcs, xcs = tan.(out_rkf45.tcs))
 
 if show_plots

@@ -1,9 +1,10 @@
 using SimpleSim
 using LinearAlgebra
 
-perform_tests = true
+perform_tests = false
 
 ### THE MOTORS
+#
 function fc_motor(ω, r_ω, p, t)
     ω_d = ω[2]
     ω_dd = (p.k * r_ω - 2 * p.ζ * p.τ * ω[2] - ω[1]) / p.τ^2
@@ -30,10 +31,13 @@ motor_2 = motor_1
 motor_3 = motor_1
 motor_4 = motor_1
 
+# motors 2 and 4 spin in the opposite direction
 motor_2 = (motor_2..., p = (motor_2.p..., direction = -1.0))
 motor_4 = (motor_4..., p = (motor_4.p..., direction = -1.0))
 
+
 ### THE PROPS
+#
 fc_prop = (x, ω, p, t) -> nothing
 gc_prop = (x, ω, p, t) -> [p.k_f2 * ω^2, p.k_t * ω]
 
@@ -42,7 +46,9 @@ prop_2 = prop_1
 prop_3 = prop_1
 prop_4 = prop_1
 
+
 ### THE RPM SENSORS
+#
 fd_rpm_sensor = (x, ω, p, t) -> nothing
 
 gd_rpm_sensor = (x, ω, p, t) -> ω
@@ -53,7 +59,9 @@ rpm_sensor_2 = rpm_sensor_1
 rpm_sensor_3 = rpm_sensor_1
 rpm_sensor_4 = rpm_sensor_1
 
+
 ### THE "POWERED PROP"
+#
 fc_powered_prop = (x, u, p, t; models) -> nothing
 
 function gc_powered_prop(x, r_ω, p, t; models)
@@ -81,7 +89,9 @@ powered_prop_3 =
 powered_prop_4 =
     (powered_prop_1..., models = (motor = motor_4, prop = prop_4, sensor = rpm_sensor_4))
 
+
 ### THE AIRFRAME
+#
 fc_airframe = (x, u, p, t; models) -> nothing
 
 function gc_airframe(x, r_ω, p, t; models)
@@ -113,7 +123,7 @@ function gc_airframe(x, r_ω, p, t; models)
 end
 
 airframe = (
-    p = (
+    p = ( # position of the rotors in the B frame
         x_prop_1_B = [10e-2, 10e-2, 0.0],
         x_prop_2_B = [-10e-2, 10e-2, 0.0],
         x_prop_3_B = [-10e-2, -10e-2, 0.0],
@@ -130,7 +140,9 @@ airframe = (
     ),
 )
 
+
 ### Test Airframe
+#
 if perform_tests
     r_ω(t) = begin
         if t < 5
@@ -153,14 +165,16 @@ if perform_tests
     p1 = plot(
         out_airframe.tcs,
         norm.([out_airframe.ycs[i, 1:3] for i = 1:size(out_airframe.ycs, 1)]),
-        title = "Total Thrust",
+        title = "Prop Tests: Total Thrust",
+        name = "f",
     )
     display(p1)
 
     p2 = plot(
         out_airframe.tcs,
         norm.([out_airframe.ycs[i, 4:6] for i = 1:size(out_airframe.ycs, 1)]),
-        title = "Total Torque",
+        title = "Prop Tests: Total Torque",
+        name = "τ",
     )
     display(p2)
 
@@ -169,7 +183,7 @@ if perform_tests
         p3[1],
         out_airframe.models.powered_prop_1.models.motor.tcs,
         out_airframe.models.powered_prop_1.models.motor.xcs[:, 1],
-        title = "RPM [rad/s]",
+        title = "Prop Tests: RPM [rad/s]",
     )
     p3 = plot!(
         p3[2],
@@ -197,6 +211,7 @@ if perform_tests
 end
 
 ### THE RIGID BODY
+#
 function fc_rigid_body(x, u, p, t)
     # rotation matrix B -> I
     R_IB = [
@@ -252,6 +267,8 @@ fd_gyro = (x, u, p, t) -> nothing
 gd_gyro = (x, u, p, t) -> x
 gyroscope = (p = nothing, fd = fd_gyro, gd = gd_gyro, Δt = 1 // 250)
 
+# TODO: add barometer
+
 #### Combining all sensors into a sensor suite
 fc_sensor_suite = (x, u, p, t; models) -> nothing
 
@@ -271,11 +288,13 @@ sensor_suite = (
 )
 
 ### THE CONTROL SYSTEM
+#
 function fd_control(x, u, p, t)
     return nothing
 end
 
 function gd_control(x, u, p, t)
+    # TODO
     return x
 end
 
@@ -306,6 +325,7 @@ end
 task_manager = (p = (), fd = fd_task_manager, gd = gd_task_manager, Δt = 1 // 1)
 
 ### THE DRONE
+#
 function fc_drone(x, u, p, t; models)
     return nothing
 end

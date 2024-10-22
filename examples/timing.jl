@@ -1,5 +1,12 @@
 using SimpleSim
 
+"""
+    Timing
+
+    This file simulates a nested model with various sampling times.
+    This allows us to ensure that SimpleSim's timing works correctly.
+"""
+
 show_plots = false
 
 function fc_inner_hybrid(x, u, p, t)

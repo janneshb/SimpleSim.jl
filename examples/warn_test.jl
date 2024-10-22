@@ -1,5 +1,12 @@
 using SimpleSim
 
+"""
+    Test Warnings
+
+    This file calls a CT model from within a DT model.
+    This is illegal and will produce warnings.
+"""
+
 function fc_inner(x, u, p, t)
     return 0.5 * x
 end

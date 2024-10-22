@@ -1,5 +1,12 @@
 using SimpleSim
 
+"""
+    Stiff IVP
+
+    This file numerically solves a relatively stiff ODE.
+    Different integrators are compared.
+"""
+
 show_plots = false
 
 function fc_stiff_ivp(x, u, p, t)

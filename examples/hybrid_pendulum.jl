@@ -1,5 +1,13 @@
 using SimpleSim
 
+"""
+    Hybrid Pendulum
+
+    This file simulates a model that has both CT and DT dynamics.
+    Hence, the CT nonlinear pendulum can be directly compared
+    to the DT linearization.
+"""
+
 show_plots = false
 
 # dynamic rule for the damped pendulum
@@ -46,4 +54,5 @@ if show_plots
     using Plots
     plotlyjs()
     plot(history.tcs, history.ycs[:, 1])
+    plot!(history.tds, history.yds[:, 1])
 end
