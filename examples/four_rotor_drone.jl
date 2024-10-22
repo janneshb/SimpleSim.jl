@@ -1,7 +1,7 @@
 using SimpleSim
 using LinearAlgebra
 
-perform_tests = true
+perform_tests = false
 
 ### THE MOTORS
 #

@@ -1,11 +1,18 @@
 using SimpleSim
 using LinearAlgebra
 
+"""
+    Three Body Problem
+
+    This file simulates the three body problem.
+    The resulting animation is also used as a logo for the package.
+"""
+
 show_plots = false
+generate_logo = false
 
 include("utils/zoh.jl")
 include("utils/recipes.jl")
-
 
 function fc_three_bodies(x, u, p, t)
     r1 = x[1:2]
@@ -192,7 +199,9 @@ if show_plots
         markersize = markersize,
     )
     display(p_logo)
+end
 
+if generate_logo
     ### Logo Animation
     ##
     stroke_color = "#34495e"

@@ -1,5 +1,12 @@
 using SimpleSim
 
+"""
+    Controlled Inverted Pendulum
+
+    This file simulates a CT inverted pendulum controlled by a CT PID controller.
+    TODO: the controller needs tuning
+"""
+
 show_plots = false
 
 # PLANT
