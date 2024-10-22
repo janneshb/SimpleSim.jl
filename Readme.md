@@ -15,12 +15,11 @@ The main point of interaction with `SimpleSim.jl` is the `simulate` function. As
 A simple example of a dynamical system model accepted by `SimpleSim.jl` would be
 ```julia
 my_model = (
-    p = nothing,
     fc = dynamics_function,
     gc = measurement_function,
 )
 ```
-where we pass `nothing` as the parameters of the model (i.e. we don't need any parameters right now) and two functions `dynamics_function` and `measurement_function` that we have defined elsewhere.
+where we pass two functions `dynamics_function` and `measurement_function` that we have defined elsewhere.
 
 These two functions model the dynamics of the model using the following approach for continuous-time dynamical systems
 ```math
@@ -34,6 +33,8 @@ dynamics_function = (x, u, p, t) -> ...
 measurement_function = (x, u, p, t) -> ...
 ```
 
+If `my_model` has no field named `p`, `SimpleSim.jl` will pass `nothing` to `fc` and `gc`.
+
 Similarly, `SimpleSim.jl` supports discrete-time systems
 ```math
 x_{k+1} = f(x_k, u_k, p, t)\\
@@ -42,7 +43,6 @@ y_k = g(x_k, u_k, p, t)
 which are modeled as
 ```julia
 my_dt_model = (
-    p = nothing,
     fd = dt_dynamics_function,
     gd = dt_measurement_function,
     Δt = 1 // 10,
