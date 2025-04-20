@@ -1,0 +1,20 @@
+{
+    "name": "quad-sim-julia",
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "quad-sim-julia",
+    "workspaceFolder": "/workspace",
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "julialang.language-julia",
+                "bierner.markdown-mermaid"
+            ],
+            "settings": {
+                "julia.environmentPath": "${workspaceFolder}",
+                "julia.execution.resultType": "inline",
+                "julia.enableTelemetry": false
+            }
+        }
+    },
+    "postCreateCommand": "julia --project=. -e 'using Pkg; Pkg.instantiate()'"
+}

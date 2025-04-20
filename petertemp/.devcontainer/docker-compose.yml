@@ -1,0 +1,10 @@
+services:
+  quad-sim-julia:
+    container_name: quad-sim-julia
+    image: quad-sim-julia
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspace:cached
+    command: sleep infinity 
