@@ -1,0 +1,10 @@
+services:
+  simplesim:
+    container_name: simplesim
+    image: simplesim
+    build:
+      context: ..
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspace:cached
+    command: /bin/bash -c "julia --project=. -e 'using Pkg; Pkg.instantiate()' && sleep infinity" 
