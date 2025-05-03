@@ -62,7 +62,12 @@ rpm_sensor_4 = rpm_sensor_1
 
 ### THE "POWERED PROP"
 #
-fc_powered_prop = (x, u, p, t; models) -> nothing
+#fc_powered_prop = (x, u, p, t; models) -> nothing
+
+function fc_powered_prop(x, u, p, t; models)
+    ω = @out models.motor
+
+end
 
 function gc_powered_prop(x, r_ω, p, t; models)
     ω = @call! models.motor r_ω
@@ -251,7 +256,7 @@ rigid_body = (
 ### SENSORS
 # TODO: add noise and drift to sensors
 fd_gps = (x, u, p, t) -> nothing
-gd_gps = (x, u, p, t) -> return x
+gd_gps = (x, u, p, t) -> x
 gps_module = (
     p = nothing,
     fd = fd_gps,
@@ -331,6 +336,7 @@ function fc_drone(x, u, p, t; models)
 end
 
 function gc_drone(x, u, p, t; models)
+    # TODO
     return x
 end
 
