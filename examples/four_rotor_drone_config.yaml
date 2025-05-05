@@ -1,0 +1,43 @@
+airframe:
+  arm_length: 0.2
+  z_offset: 0.0
+  powered_prop_1:
+    motor:
+      tau: 0.005 # 1 / 200 rad/s
+      zeta: 0.7
+      k: 1.0
+      rpm_max: 20000
+      direction: -1.0 # -1 is CCW, 1 is CW
+    prop:
+      k_f2: 1.5e-6
+      k_t2: 2.5e-8
+  powered_prop_2:
+    motor:
+      tau: 0.005
+      zeta: 0.7
+      k: 1.0
+      rpm_max: 20000
+      direction: 1.0
+    prop:
+      k_f2: 1.5e-6
+      k_t2: 2.5e-8
+  powered_prop_3:
+    motor:
+      tau: 0.005
+      zeta: 0.7
+      k: 1.0
+      rpm_max: 20000
+      direction: -1.0
+    prop:
+      k_f2: 1.5e-6
+      k_t2: 2.5e-8
+  powered_prop_4:
+    motor:
+      tau: 0.005
+      zeta: 0.7
+      k: 1.0
+      rpm_max: 20000
+      direction: 1.0
+    prop:
+      k_f2: 1.5e-6
+      k_t2: 2.5e-8
