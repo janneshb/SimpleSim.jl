@@ -2,7 +2,8 @@ using SimpleSim
 using LinearAlgebra
 
 using YAML
-drone_conf = YAML.load_file("examples/four_rotor_drone_config.yaml"; dicttype=Dict{String,Any})
+drone_conf =
+    YAML.load_file("examples/four_rotor_drone_config.yaml"; dicttype = Dict{String,Any})
 
 perform_tests = true
 
@@ -29,7 +30,7 @@ motor_1 = (
         ζ = motor_1_conf["zeta"],
         k = motor_1_conf["k"],
         rpm_max = motor_1_conf["rpm_max"] * 2 * π,
-        direction = motor_1_conf["direction"]
+        direction = motor_1_conf["direction"],
     ),
     fc = fc_motor,
     gc = gc_motor,
@@ -44,7 +45,7 @@ motor_2 = (
         ζ = motor_2_conf["zeta"],
         k = motor_2_conf["k"],
         rpm_max = motor_2_conf["rpm_max"] * 2 * π,
-        direction = motor_2_conf["direction"]
+        direction = motor_2_conf["direction"],
     ),
     fc = fc_motor,
     gc = gc_motor,
@@ -59,7 +60,7 @@ motor_3 = (
         ζ = motor_3_conf["zeta"],
         k = motor_3_conf["k"],
         rpm_max = motor_3_conf["rpm_max"] * 2 * π,
-        direction = motor_3_conf["direction"]
+        direction = motor_3_conf["direction"],
     ),
     fc = fc_motor,
     gc = gc_motor,
@@ -74,7 +75,7 @@ motor_4 = (
         ζ = motor_4_conf["zeta"],
         k = motor_4_conf["k"],
         rpm_max = motor_4_conf["rpm_max"] * 2 * π,
-        direction = motor_4_conf["direction"]
+        direction = motor_4_conf["direction"],
     ),
     fc = fc_motor,
     gc = gc_motor,
@@ -89,16 +90,36 @@ fc_prop = (x, ω, p, t) -> nothing
 gc_prop = (x, ω, p, t) -> [p.k_f2 * ω^2, p.k_t2 * ω^2]
 
 prop_1_conf = drone_conf["airframe"]["powered_prop_1"]["prop"]
-prop_1 = (p = (k_f2 = prop_1_conf["k_f2"], k_t2 = prop_1_conf["k_t2"]), fc = fc_prop, gc = gc_prop, uc0 = 0.0)
+prop_1 = (
+    p = (k_f2 = prop_1_conf["k_f2"], k_t2 = prop_1_conf["k_t2"]),
+    fc = fc_prop,
+    gc = gc_prop,
+    uc0 = 0.0,
+)
 
 prop_2_conf = drone_conf["airframe"]["powered_prop_2"]["prop"]
-prop_2 = (p = (k_f2 = prop_2_conf["k_f2"], k_t2 = prop_2_conf["k_t2"]), fc = fc_prop, gc = gc_prop, uc0 = 0.0)
+prop_2 = (
+    p = (k_f2 = prop_2_conf["k_f2"], k_t2 = prop_2_conf["k_t2"]),
+    fc = fc_prop,
+    gc = gc_prop,
+    uc0 = 0.0,
+)
 
 prop_3_conf = drone_conf["airframe"]["powered_prop_3"]["prop"]
-prop_3 = (p = (k_f2 = prop_3_conf["k_f2"], k_t2 = prop_3_conf["k_t2"]), fc = fc_prop, gc = gc_prop, uc0 = 0.0)
+prop_3 = (
+    p = (k_f2 = prop_3_conf["k_f2"], k_t2 = prop_3_conf["k_t2"]),
+    fc = fc_prop,
+    gc = gc_prop,
+    uc0 = 0.0,
+)
 
 prop_4_conf = drone_conf["airframe"]["powered_prop_4"]["prop"]
-prop_4 = (p = (k_f2 = prop_4_conf["k_f2"], k_t2 = prop_4_conf["k_t2"]), fc = fc_prop, gc = gc_prop, uc0 = 0.0)
+prop_4 = (
+    p = (k_f2 = prop_4_conf["k_f2"], k_t2 = prop_4_conf["k_t2"]),
+    fc = fc_prop,
+    gc = gc_prop,
+    uc0 = 0.0,
+)
 
 
 ### THE RPM SENSORS
@@ -179,10 +200,26 @@ end
 airframe_config = drone_conf["airframe"]
 airframe = (
     p = ( # position of the rotors in the B frame
-        x_prop_1_B = [airframe_config["arm_length"]/sqrt(2), airframe_config["arm_length"]/sqrt(2), airframe_config["z_offset"]],
-        x_prop_2_B = [-airframe_config["arm_length"]/sqrt(2), airframe_config["arm_length"]/sqrt(2), airframe_config["z_offset"]],
-        x_prop_3_B = [-airframe_config["arm_length"]/sqrt(2), -airframe_config["arm_length"]/sqrt(2), airframe_config["z_offset"]],
-        x_prop_4_B = [airframe_config["arm_length"]/sqrt(2), -airframe_config["arm_length"]/sqrt(2), airframe_config["z_offset"]],
+        x_prop_1_B = [
+            airframe_config["arm_length"] / sqrt(2),
+            airframe_config["arm_length"] / sqrt(2),
+            airframe_config["z_offset"],
+        ],
+        x_prop_2_B = [
+            -airframe_config["arm_length"] / sqrt(2),
+            airframe_config["arm_length"] / sqrt(2),
+            airframe_config["z_offset"],
+        ],
+        x_prop_3_B = [
+            -airframe_config["arm_length"] / sqrt(2),
+            -airframe_config["arm_length"] / sqrt(2),
+            airframe_config["z_offset"],
+        ],
+        x_prop_4_B = [
+            airframe_config["arm_length"] / sqrt(2),
+            -airframe_config["arm_length"] / sqrt(2),
+            airframe_config["z_offset"],
+        ],
     ),
     fc = fc_airframe,
     gc = gc_airframe,
@@ -219,7 +256,7 @@ if perform_tests
     plotlyjs()
     p1 = plot(
         out_airframe.tcs,
-        norm.([out_airframe.ycs[i, 1:3] for i = 1:size(out_airframe.ycs, 1)]),
+        norm.([out_airframe.ycs[i, 1:3] for i ∈ 1:size(out_airframe.ycs, 1)]),
         title = "Prop Tests: Total Thrust",
         name = "f",
     )
@@ -227,7 +264,7 @@ if perform_tests
 
     p2 = plot(
         out_airframe.tcs,
-        norm.([out_airframe.ycs[i, 4:6] for i = 1:size(out_airframe.ycs, 1)]),
+        norm.([out_airframe.ycs[i, 4:6] for i ∈ 1:size(out_airframe.ycs, 1)]),
         title = "Prop Tests: Total Torque",
         name = "τ",
     )

@@ -76,8 +76,8 @@ if show_plots
     display(ani)
 
     p2 = plot(
-        history.tcs[1:end-1],
-        history.tcs[2:end] .- history.tcs[1:end-1],
+        history.tcs[1:(end-1)],
+        history.tcs[2:end] .- history.tcs[1:(end-1)],
         seriestype = :steppost,
         xlabel = "t",
         ylabel = "Δt",
