@@ -86,6 +86,8 @@ function init_working_copy(
         sub_tree = build_sub_tree(model.models)
     end
 
+    optional_p = hasproperty(model, :p) ? model.p : nothing
+
     rng_dt =
         hasproperty(model, :wd) &&
         hasproperty(model, :wd_seed) &&
@@ -100,8 +102,8 @@ function init_working_copy(
     ycs0 =
         !structure_only && hasproperty(model, :gc) && model.gc !== nothing ?
         (
-            length(sub_tree) > 0 ? [model.gc(xc0, uc0, model.p, t0; models = sub_tree)] :
-            [model.gc(xc0, uc0, model.p, t0)]
+            length(sub_tree) > 0 ? [model.gc(xc0, uc0, optional_p, t0; models = sub_tree)] :
+            [model.gc(xc0, uc0, optional_p, t0)]
         ) : nothing
 
     xd0 =
@@ -110,12 +112,12 @@ function init_working_copy(
     ud0 =
         uc0 === nothing ?
         (hasproperty(model, :ud0) && model.ud0 !== nothing ? model.ud0 : nothing) : ud0
-    wd0 = hasproperty(model, :wd) ? model.wd(xd0, ud0, model.p, t0, rng_dt) : nothing
+    wd0 = hasproperty(model, :wd) ? model.wd(xd0, ud0, optional_p, t0, rng_dt) : nothing
     gd_kwargs = length(sub_tree) > 0 ? (models = sub_tree,) : ()
     gd_kwargs = hasproperty(model, :wd) ? (gd_kwargs..., w = wd0) : gd_kwargs
     yds0 =
         !structure_only && hasproperty(model, :gd) && model.gd !== nothing ?
-        [model.gd(xd0, ud0, model.p, t0; gd_kwargs...)] : nothing
+        [model.gd(xd0, ud0, optional_p, t0; gd_kwargs...)] : nothing
 
     type = begin
         temp_type = TypeUnknown::ModelType
@@ -163,7 +165,7 @@ function init_working_copy(
               xd0 !== nothing ? [xd0] : nothing,
         yds = yds0,
         wds = !structure_only && hasproperty(model, :wd) ?
-              [model.wd(xd0, ud0, model.p, t0, rng_dt)] : nothing,
+              [model.wd(xd0, ud0, optional_p, t0, rng_dt)] : nothing,
         rng_dt = rng_dt,
         models = sub_tree,
     )

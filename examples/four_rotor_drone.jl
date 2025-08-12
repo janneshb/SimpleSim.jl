@@ -55,11 +55,11 @@ motor_2 = (
 motor_3_conf = drone_conf["airframe"]["powered_prop_3"]["motor"]
 motor_3 = (
     p = (
-        τ = motor_2_conf["tau"],
-        ζ = motor_2_conf["zeta"],
-        k = motor_2_conf["k"],
-        rpm_max = motor_2_conf["rpm_max"] * 2 * π,
-        direction = motor_2_conf["direction"]
+        τ = motor_3_conf["tau"],
+        ζ = motor_3_conf["zeta"],
+        k = motor_3_conf["k"],
+        rpm_max = motor_3_conf["rpm_max"] * 2 * π,
+        direction = motor_3_conf["direction"]
     ),
     fc = fc_motor,
     gc = gc_motor,
@@ -70,11 +70,11 @@ motor_3 = (
 motor_4_conf = drone_conf["airframe"]["powered_prop_4"]["motor"]
 motor_4 = (
     p = (
-        τ = motor_2_conf["tau"],
-        ζ = motor_2_conf["zeta"],
-        k = motor_2_conf["k"],
-        rpm_max = motor_2_conf["rpm_max"] * 2 * π,
-        direction = motor_2_conf["direction"]
+        τ = motor_4_conf["tau"],
+        ζ = motor_4_conf["zeta"],
+        k = motor_4_conf["k"],
+        rpm_max = motor_4_conf["rpm_max"] * 2 * π,
+        direction = motor_4_conf["direction"]
     ),
     fc = fc_motor,
     gc = gc_motor,
@@ -82,7 +82,9 @@ motor_4 = (
     uc0 = 0.0,
 )
 
+
 ### THE PROPS
+#
 fc_prop = (x, ω, p, t) -> nothing
 gc_prop = (x, ω, p, t) -> [p.k_f2 * ω^2, p.k_t2 * ω^2]
 
@@ -98,7 +100,9 @@ prop_3 = (p = (k_f2 = prop_3_conf["k_f2"], k_t2 = prop_3_conf["k_t2"]), fc = fc_
 prop_4_conf = drone_conf["airframe"]["powered_prop_4"]["prop"]
 prop_4 = (p = (k_f2 = prop_4_conf["k_f2"], k_t2 = prop_4_conf["k_t2"]), fc = fc_prop, gc = gc_prop, uc0 = 0.0)
 
+
 ### THE RPM SENSORS
+#
 fd_rpm_sensor = (x, ω, p, t) -> nothing
 
 gd_rpm_sensor = (x, ω, p, t) -> ω
@@ -108,6 +112,7 @@ rpm_sensor_1 =
 rpm_sensor_2 = rpm_sensor_1
 rpm_sensor_3 = rpm_sensor_1
 rpm_sensor_4 = rpm_sensor_1
+
 
 ### THE "POWERED PROP"
 #
@@ -189,6 +194,7 @@ airframe = (
         powered_prop_4 = powered_prop_4,
     ),
 )
+
 
 ### Test Airframe
 #

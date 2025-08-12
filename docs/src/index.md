@@ -22,12 +22,11 @@ A simple example of a dynamical system model accepted by `SimpleSim.jl` would be
 
 ```julia
 my_model = (
-    p = nothing,
     fc = dynamics_function,
     gc = measurement_function,
 )
 ```
-where we pass `nothing` as the parameters of the model (i.e. we don't need any parameters right now) and two functions `dynamics_function` and `measurement_function` that we defined elsewhere.
+where we pass two functions `dynamics_function` and `measurement_function` that we defined elsewhere.
 
 These two functions follow the typical dynamical systems approach for continuous-time systems
 
@@ -43,6 +42,8 @@ dynamics_function = (x, u, p t) -> ...
 measurement_function = (x, u, p t) -> ...
 ```
 
+If `my_model` has no field named `p`, `SimpleSim.jl` will pass `nothing` to `fc` and `gc`.
+
 ### Discrete-Time Systems
 
 Similarly for a discrete-time system we write
@@ -52,7 +53,6 @@ next_state_function = (x, u, p, t) -> ...
 dt_measurement_function = (x, u, p, t) -> ...
 
 my_dt_model = (
-    p = nothing,
     fd = next_state_function,
     gd = dt_measurement_function,
     Δt = 1 // 10,
@@ -82,7 +82,7 @@ add the keyword argument `xc0 =` or `xd0 =` to set the initial state of your con
 
 ```julia
 submodel_1 = (
-    p = nothing,
+    p = ...,
     fc = ...,
     gc = ...,
 )
@@ -90,7 +90,7 @@ submodel_1 = (
 submodel_2 = ...
 
 parent_model = (
-    p = nothing,
+    p = ...,
     fc = fc_parent,
     gc = gc_parent,
     models = (
