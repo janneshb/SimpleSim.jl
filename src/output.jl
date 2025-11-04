@@ -137,12 +137,14 @@ function init_working_copy(
         model_id = model_id,
         type = type,
         callable_ct! = !structure_only ?
-                       (u, t, model_working_copy) ->
-            model_callable_ct!(u, t, model, model_working_copy, Δt, integrator, T) :
+                       (u, t, model_mutable) ->
+            model_callable_ct!(u, t, model, model_mutable, Δt, integrator, T) :
                        nothing,
         callable_dt! = !structure_only ?
-                       (u, t, model_working_copy) ->
-            model_callable_dt!(u, t, model, model_working_copy, T) : nothing,
+                       (u, t, model_mutable) ->
+            model_callable_dt!(u, t, model, model_mutable, T) : nothing,
+        init! = !structure_only ? (model_mutable) -> model_init!(model, model_mutable) : nothing,
+        destroy! = !structure_only ? (model_mutable) -> model_destroy!(model, model_mutable) : nothing,
         Δt = !structure_only && hasproperty(model, :Δt) && model.Δt !== nothing ? model.Δt :
              Δt,
         zero_crossing_tol = !structure_only &&
@@ -172,20 +174,20 @@ function init_working_copy(
 end
 
 # adds an entry (tc, xc, yc) to the working copy of the model
-function update_working_copy_ct!(model_working_copy, t, xc, yc, T)
+function update_working_copy_ct!(model_mutable, t, xc, yc, T)
     if t > T
         return
     end
-    push!(model_working_copy.tcs, eltype(model_working_copy.tcs)(t)) # always store the time if the model was called
+    push!(model_mutable.tcs, eltype(model_mutable.tcs)(t)) # always store the time if the model was called
     try
-        xc !== nothing ? push!(model_working_copy.xcs, eltype(model_working_copy.xcs)(xc)) :
+        xc !== nothing ? push!(model_mutable.xcs, eltype(model_mutable.xcs)(xc)) :
         nothing
     catch
         !SILENT &&
             @error "Could not update CT state evolution. Please check your state variables for type consistency"
     end
     try
-        yc !== nothing ? push!(model_working_copy.ycs, eltype(model_working_copy.ycs)(yc)) :
+        yc !== nothing ? push!(model_mutable.ycs, eltype(model_mutable.ycs)(yc)) :
         nothing
     catch
         !SILENT &&
@@ -194,27 +196,27 @@ function update_working_copy_ct!(model_working_copy, t, xc, yc, T)
 end
 
 # adds an entry (td, xd, yd) to the working copy of the model
-function update_working_copy_dt!(model_working_copy, t, xd, yd, wd, T)
+function update_working_copy_dt!(model_mutable, t, xd, yd, wd, T)
     if t > T
         return
     end
-    push!(model_working_copy.tds, eltype(model_working_copy.tds)(t)) # always store the time if the model was called
+    push!(model_mutable.tds, eltype(model_mutable.tds)(t)) # always store the time if the model was called
     try
-        xd !== nothing ? push!(model_working_copy.xds, eltype(model_working_copy.xds)(xd)) :
+        xd !== nothing ? push!(model_mutable.xds, eltype(model_mutable.xds)(xd)) :
         nothing
     catch
         !SILENT &&
             @error "Could not update DT state evolution. Please check your state variables for type consistency"
     end
     try
-        yd !== nothing ? push!(model_working_copy.yds, eltype(model_working_copy.yds)(yd)) :
+        yd !== nothing ? push!(model_mutable.yds, eltype(model_mutable.yds)(yd)) :
         nothing
     catch
         !SILENT &&
             @error "Could not update DT output evolution. Please check your output variables for type consistency"
     end
     try
-        wd !== nothing ? push!(model_working_copy.wds, eltype(model_working_copy.wds)(wd)) :
+        wd !== nothing ? push!(model_mutable.wds, eltype(model_mutable.wds)(wd)) :
         nothing
     catch
         !SILENT &&

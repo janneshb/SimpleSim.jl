@@ -110,7 +110,7 @@ function simulate(
     end
 
     # build callable structure to mimic the model tree
-    model_working_copy = init_working_copy(
+    model_mutable = init_working_copy(
         model,
         t0 = t0,
         Δt = Δt_max,
@@ -120,30 +120,37 @@ function simulate(
         xd0 = xd0,
         integrator = integrator,
         T = T,
-    ) # TODO: find better variable name for model_working_copy
+    )
+
+    # initialize the model
+    # this also initializes all submodels recursively
+    model_mutable.init!(model_mutable);
 
     # simulate all systems that are due now
     t = t0
     simulation_is_running = true
     while simulation_is_running
-        simulation_is_running, t = loop!(model_working_copy, uc, ud, t, Δt_max, T)
+        simulation_is_running, t = loop!(model_mutable, uc, ud, t, Δt_max, T)
     end
+
+    # "destroy" the model and all of its submodels
+    model_mutable.destroy!(model_mutable);
 
     DEBUG && !SILENT && println(OUT_STREAM, "Simulation has terminated.")
     DEBUG && !SILENT && println(OUT_STREAM, "Processing simulation logs...")
-    out = post_process(model_working_copy)
+    out = post_process(model_mutable)
     DEBUG && !SILENT && println(OUT_STREAM, "Done!")
     return out
 end
 
 # the main simulation loop
-function loop!(model_working_copy, uc, ud, t, Δt_max, T)
+function loop!(model_mutable, uc, ud, t, Δt_max, T)
     t_next = t + Δt_max
     (Δt, xc, yc, updated_state_ct) =
-        model_working_copy.callable_ct!(uc(t), t_next, model_working_copy)
+        model_mutable.callable_ct!(uc(t), t_next, model_mutable)
     t_next = min(t_next, t + Δt)
     (xd, yd, updated_state_dt) =
-        model_working_copy.callable_dt!(ud(t), t_next, model_working_copy)
+        model_mutable.callable_dt!(ud(t), t_next, model_mutable)
 
     if t_next > T # end of simulation
         return false, T
@@ -238,41 +245,41 @@ macro call_dt!(model, u)
     end
 end
 
-function model_callable_ct!(uc, t, model, model_working_copy, Δt, integrator, T)
+function model_callable_ct!(uc, t, model, model_mutable, Δt, integrator, T)
     context = @context # Warn if we are still in DT context
     if context === ContextDT::SimulationContext
         !SILENT &&
-            @warn "You are calling a CT model (id $(model_working_copy.model_id)) from within a DT model. This should not be done and will lead to unexpected results"
+            @warn "You are calling a CT model (id $(model_mutable.model_id)) from within a DT model. This should not be done and will lead to unexpected results"
     end
 
-    xc_next = model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end]
-    yc_next = model_working_copy.ycs === nothing ? nothing : model_working_copy.ycs[end]
-    submodels = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
+    xc_next = model_mutable.xcs === nothing ? nothing : model_mutable.xcs[end]
+    yc_next = model_mutable.ycs === nothing ? nothing : model_mutable.ycs[end]
+    submodels = hasproperty(model_mutable, :models) ? model_mutable.models : (;)
     Δt_actual = Δt
 
     @ct
     updated_state = false
-    if due(model_working_copy, t)
+    if due(model_mutable, t)
         optional_p = hasproperty(model, :p) ? model.p : nothing
         xc_next, Δt_actual = step_ct(
             Δt,
             model.fc,
-            model_working_copy.xcs === nothing ? nothing : model_working_copy.xcs[end],
+            model_mutable.xcs === nothing ? nothing : model_mutable.xcs[end],
             uc,
             optional_p,
-            model_working_copy.tcs[end],
+            model_mutable.tcs[end],
             submodels;
             integrator = integrator,
         )
-        t_next = model_working_copy.tcs[end] + Δt_actual
+        t_next = model_mutable.tcs[end] + Δt_actual
 
         # Zero-crossing detection if `zc` is defined
         if hasproperty(model, :zc) &&
            model.zc !== nothing &&
-           model.zc(xc_next, optional_p, t_next) < -model_working_copy.zero_crossing_tol
+           model.zc(xc_next, optional_p, t_next) < -model_mutable.zero_crossing_tol
             # Initialize bisection algorithm
-            xc_lower = model_working_copy.xcs[end]
-            t_lower = model_working_copy.tcs[end]
+            xc_lower = model_mutable.xcs[end]
+            t_lower = model_mutable.tcs[end]
             t_upper = t_next
 
             # Run bisection until zero crossing tolerance is met, always use RK4 for this
@@ -291,10 +298,10 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt, integrator, T
                     )
                     zc_bi = model.zc(xc_bi, optional_p, t_lower + Δt_bi)
 
-                    if zc_bi < -model_working_copy.zero_crossing_tol / 2
+                    if zc_bi < -model_mutable.zero_crossing_tol / 2
                         # t_lower + Δt_bi still leads to zero crossing
                         t_upper = t_lower + Δt_bi
-                    elseif zc_bi > model_working_copy.zero_crossing_tol / 2
+                    elseif zc_bi > model_mutable.zero_crossing_tol / 2
                         # t_lower + Δt_bi doesn't lead to zero crossing anymore
                         t_lower = t_lower + Δt_bi
                         xc_lower = xc_bi
@@ -314,8 +321,8 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt, integrator, T
                 length(submodels) > 0 ?
                 model.gc(xc_next, uc, optional_p, t_next; models = submodels) :
                 model.gc(xc_next, uc, optional_p, t_next)
-            Δt_post_zc = model_working_copy.tcs[end] + Δt_actual - t_next
-            update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next, T)
+            Δt_post_zc = model_mutable.tcs[end] + Δt_actual - t_next
+            update_working_copy_ct!(model_mutable, t_next, xc_next, yc_next, T)
 
             # fill in the remaining time of Δt to avoid Rational overflow in future iterations
             xc_next, _ = step_ct(
@@ -334,29 +341,29 @@ function model_callable_ct!(uc, t, model, model_working_copy, Δt, integrator, T
             length(submodels) > 0 ?
             model.gc(xc_next, uc, optional_p, t_next; models = submodels) :
             model.gc(xc_next, uc, optional_p, t_next)
-        update_working_copy_ct!(model_working_copy, t_next, xc_next, yc_next, T)
+        update_working_copy_ct!(model_mutable, t_next, xc_next, yc_next, T)
         updated_state = true
     end
     @call_completed
     return (Δt_actual, xc_next, yc_next, updated_state)
 end
 
-function model_callable_dt!(ud, t, model, model_working_copy, T)
+function model_callable_dt!(ud, t, model, model_mutable, T)
     @dt
-    xd_next = model_working_copy.xds === nothing ? nothing : model_working_copy.xds[end]
-    yd_next = model_working_copy.yds === nothing ? nothing : model_working_copy.yds[end]
-    wd_next = model_working_copy.wds === nothing ? nothing : model_working_copy.wds[end]
-    submodels = hasproperty(model_working_copy, :models) ? model_working_copy.models : (;)
+    xd_next = model_mutable.xds === nothing ? nothing : model_mutable.xds[end]
+    yd_next = model_mutable.yds === nothing ? nothing : model_mutable.yds[end]
+    wd_next = model_mutable.wds === nothing ? nothing : model_mutable.wds[end]
+    submodels = hasproperty(model_mutable, :models) ? model_mutable.models : (;)
 
     updated_state = false
-    if due(model_working_copy, t)
+    if due(model_mutable, t)
         optional_p = hasproperty(model, :p) ? model.p : nothing
         wd_next =
             hasproperty(model, :wd) ?
-            model.wd(xd_next, ud, optional_p, t, model_working_copy.rng_dt) : nothing
+            model.wd(xd_next, ud, optional_p, t, model_mutable.rng_dt) : nothing
         xd_next = step_dt(
             model.fd,
-            model_working_copy.xds === nothing ? nothing : model_working_copy.xds[end],
+            model_mutable.xds === nothing ? nothing : model_mutable.xds[end],
             ud,
             optional_p,
             t,
@@ -366,7 +373,7 @@ function model_callable_dt!(ud, t, model, model_working_copy, T)
         gd_kwargs = length(submodels) > 0 ? (models = submodels,) : ()
         gd_kwargs = wd_next === nothing ? gd_kwargs : (gd_kwargs..., w = wd_next)
         yd_next = model.gd(xd_next, ud, optional_p, t; gd_kwargs...)
-        update_working_copy_dt!(model_working_copy, t, xd_next, yd_next, wd_next, T)
+        update_working_copy_dt!(model_mutable, t, xd_next, yd_next, wd_next, T)
         updated_state = true
     end
     @call_completed
