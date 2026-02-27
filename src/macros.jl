@@ -18,8 +18,8 @@ macro gather_default_config()
     global_vars = filter(
         x ->
             isdefined(SimpleSim, x) &&
-                any([isa(getfield(SimpleSim, x), t) for t in accepted_types]) ||
-                x in exceptional_vars,
+            any([isa(getfield(SimpleSim, x), t) for t in accepted_types]) ||
+            x in exceptional_vars,
         names(SimpleSim, all = true, imported = false),
     )
     for x in global_vars

@@ -7,7 +7,7 @@ Runs the simulation for the given `model`.
 Returns a `NamedTuple` with all time-series information about the simulation.
 
 # Mandatory Keyword Arguments
-- `T`: Total time of the simulation. Mand
+- `T`: Total time of the simulation.
 
 # Optional Keyword Arguments
 - `uc`: Expects a function `(t) -> u` defining the input to a continuous-time model at time `t`. Defaults to `(t) -> nothing`.
@@ -41,8 +41,8 @@ However, if necessary the following options can be passed in a `NamedTuple` to t
     Defaults to `1e-6`.
 - `RKF45_abs_tol`: absolute tolerance for the truncation error leading to termination of the `RKF45` integrator.
     Defaults to `1e-7`.
-- `silent`: if set to `true` all output, including warnings and erros is disabled.
-    To only print erros and warnings and disable all other output set `display_progress` and `debug` to `false`.
+- `silent`: if set to `true` all output, including warnings and errors is disabled.
+    To only print errors and warnings and disable all other output set `display_progress` and `debug` to `false`.
     Defaults to `false`.
 - `debug`: set to `true` to get additional information printed in the terminal that might help you debug your models.
     Defaults to `false`.
@@ -74,8 +74,8 @@ function simulate(
     ud = (t) -> nothing,
     Δt_max = oneunit(T) * ΔT_DEFAULT,
     t0 = 0 // 1 * oneunit(T),
-    xc0 = nothing, # note: this is only valid for the top-level model. Also helpful if a stand-alone model is simulated
-    xd0 = nothing,
+    xc0 = nothing, # note: this is only valid for the top-level model. Also helpful if a stand-alone model (with no submodels) is simulated
+    xd0 = nothing, # note: see above
     integrator::SimpleSimIntegrator = RK4,
     out_stream = stdout,
     options::NamedTuple = (;),
@@ -149,8 +149,7 @@ function loop!(model_mutable, uc, ud, t, Δt_max, T)
     (Δt, xc, yc, updated_state_ct) =
         model_mutable.callable_ct!(uc(t), t_next, model_mutable)
     t_next = min(t_next, t + Δt)
-    (xd, yd, updated_state_dt) =
-        model_mutable.callable_dt!(ud(t), t_next, model_mutable)
+    (xd, yd, updated_state_dt) = model_mutable.callable_dt!(ud(t), t_next, model_mutable)
 
     if t_next > T # end of simulation
         return false, T
@@ -217,7 +216,7 @@ macro call_ct!(model, u)
         MODEL_CALLS_DISABLED &&
             !SILENT &&
             !SILENT &&
-            @error "@call! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in umambiguous cases)."
+            @error "@call! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in unambiguous cases)."
 
         model_to_call = $(esc(model))
         (Δt, xc, yc, updated_state) =
@@ -236,7 +235,7 @@ macro call_dt!(model, u)
     quote
         MODEL_CALLS_DISABLED &&
             !SILENT &&
-            @error "@call! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in umambiguous cases)."
+            @error "@call! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in unambiguous cases)."
 
         model_to_call = $(esc(model))
         (xd, yd, updated_state) =
@@ -378,4 +377,12 @@ function model_callable_dt!(ud, t, model, model_mutable, T)
     end
     @call_completed
     return (xd_next, yd_next, updated_state)
+end
+
+function model_init!(model, model_mutable)
+    # TODO!
+end
+
+function model_destroy!(model, model_mutable)
+    # TODO!
 end

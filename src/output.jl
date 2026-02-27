@@ -136,15 +136,16 @@ function init_working_copy(
         name = model_name,
         model_id = model_id,
         type = type,
-        callable_ct! = !structure_only ?
-                       (u, t, model_mutable) ->
-            model_callable_ct!(u, t, model, model_mutable, Δt, integrator, T) :
-                       nothing,
-        callable_dt! = !structure_only ?
-                       (u, t, model_mutable) ->
+        (callable_ct!) = !structure_only ?
+                         (u, t, model_mutable) ->
+            model_callable_ct!(u, t, model, model_mutable, Δt, integrator, T) : nothing,
+        (callable_dt!) = !structure_only ?
+                         (u, t, model_mutable) ->
             model_callable_dt!(u, t, model, model_mutable, T) : nothing,
-        init! = !structure_only ? (model_mutable) -> model_init!(model, model_mutable) : nothing,
-        destroy! = !structure_only ? (model_mutable) -> model_destroy!(model, model_mutable) : nothing,
+        (init!) = !structure_only ? (model_mutable) -> model_init!(model, model_mutable) :
+                  nothing,
+        (destroy!) = !structure_only ?
+                     (model_mutable) -> model_destroy!(model, model_mutable) : nothing,
         Δt = !structure_only && hasproperty(model, :Δt) && model.Δt !== nothing ? model.Δt :
              Δt,
         zero_crossing_tol = !structure_only &&
@@ -180,15 +181,13 @@ function update_working_copy_ct!(model_mutable, t, xc, yc, T)
     end
     push!(model_mutable.tcs, eltype(model_mutable.tcs)(t)) # always store the time if the model was called
     try
-        xc !== nothing ? push!(model_mutable.xcs, eltype(model_mutable.xcs)(xc)) :
-        nothing
+        xc !== nothing ? push!(model_mutable.xcs, eltype(model_mutable.xcs)(xc)) : nothing
     catch
         !SILENT &&
             @error "Could not update CT state evolution. Please check your state variables for type consistency"
     end
     try
-        yc !== nothing ? push!(model_mutable.ycs, eltype(model_mutable.ycs)(yc)) :
-        nothing
+        yc !== nothing ? push!(model_mutable.ycs, eltype(model_mutable.ycs)(yc)) : nothing
     catch
         !SILENT &&
             @error "Could not update CT output evolution. Please check your output variables for type consistency"
@@ -202,22 +201,19 @@ function update_working_copy_dt!(model_mutable, t, xd, yd, wd, T)
     end
     push!(model_mutable.tds, eltype(model_mutable.tds)(t)) # always store the time if the model was called
     try
-        xd !== nothing ? push!(model_mutable.xds, eltype(model_mutable.xds)(xd)) :
-        nothing
+        xd !== nothing ? push!(model_mutable.xds, eltype(model_mutable.xds)(xd)) : nothing
     catch
         !SILENT &&
             @error "Could not update DT state evolution. Please check your state variables for type consistency"
     end
     try
-        yd !== nothing ? push!(model_mutable.yds, eltype(model_mutable.yds)(yd)) :
-        nothing
+        yd !== nothing ? push!(model_mutable.yds, eltype(model_mutable.yds)(yd)) : nothing
     catch
         !SILENT &&
             @error "Could not update DT output evolution. Please check your output variables for type consistency"
     end
     try
-        wd !== nothing ? push!(model_mutable.wds, eltype(model_mutable.wds)(wd)) :
-        nothing
+        wd !== nothing ? push!(model_mutable.wds, eltype(model_mutable.wds)(wd)) : nothing
     catch
         !SILENT &&
             @error "Could not update DT random draw evolution. Please check your random variables for type consistency"
@@ -225,7 +221,7 @@ function update_working_copy_dt!(model_mutable, t, xd, yd, wd, T)
 end
 
 # takes a vector of vector (considered a timeseries) and returns it in matrix form
-function post_process_time_series(ts; name = "")
+function post_process_time_series(ts::AbstractVector{<:AbstractVector{<:Number}}; name = "")
     matrix_form = nothing
     try
         matrix_form = ts !== nothing ? reduce(vcat, transpose.(ts)) : nothing
@@ -239,6 +235,11 @@ function post_process_time_series(ts; name = "")
             @error "Could not post-process time series data $name. Check this state/output for consistent types (and vector lengths). Set DEBUG=true for full error message."
     end
     return matrix_form
+end
+
+# if the output is not given in vector-of-vector format, leave it as it is
+function post_process_time_series(ts; name = "")
+    return ts
 end
 
 # reduce output and cast time series into matrix form
