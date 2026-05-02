@@ -330,6 +330,6 @@
             wd_seed = 1234,
         )
         out_faulty = simulate(random_walk_faulty, T = 5 // 1, options = (silent = true,))
-        @test out_faulty.xds == 0
+        @test out_faulty.xds == [0]
     end
 end
