@@ -4,8 +4,8 @@ using Random
 import Logging.Info, Logging.Debug, Logging.SimpleLogger, Logging.global_logger
 import Base.push!, Base.@inline, Base.gcd
 
-global VERSION = "0.1.4"
-global YEAR = "2024"
+global VERSION = "0.1.6"
+global YEAR = "2026"
 global AUTHORS = "Jannes Huehnerbein"
 
 global ΔT_DEFAULT = 1 // 100 # default step size for CT systems, must be rational!

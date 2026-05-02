@@ -3,7 +3,7 @@ using Plots
 @userplot LogoAnimation
 @recipe function f(logo::LogoAnimation; background_color = "#bbb")
     i, r, horizon, plot_info, line_info, planet_info = logo.args
-    idx = max(1, i - horizon):i
+    idx = max(1, i-horizon):i
     n = length(idx)
 
     aspect_ratio --> 1

@@ -84,8 +84,8 @@ if show_plots
     display(p1)
 
     p2 = plot(
-        out.tcs[1:end-1],
-        out.tcs[2:end] .- out.tcs[1:end-1],
+        out.tcs[1:(end-1)],
+        out.tcs[2:end] .- out.tcs[1:(end-1)],
         seriestype = :steppost,
         xlabel = "t",
         ylabel = "Δt",

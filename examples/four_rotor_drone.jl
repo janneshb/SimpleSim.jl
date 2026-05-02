@@ -1,7 +1,11 @@
 using SimpleSim
 using LinearAlgebra
 
-perform_tests = false
+using YAML
+drone_conf =
+    YAML.load_file("examples/four_rotor_drone_config.yaml"; dicttype = Dict{String,Any})
+
+perform_tests = true
 
 ### THE MOTORS
 #
@@ -19,32 +23,103 @@ end
 
 gc_motor = (ω, r_ω, p, t) -> p.direction * ω[1]
 
+motor_1_conf = drone_conf["airframe"]["powered_prop_1"]["motor"]
 motor_1 = (
-    p = (τ = 0.075, ζ = 0.6, k = 1.0, rpm_max = 20_000 * 2 * π, direction = 1.0),
+    p = (
+        τ = motor_1_conf["tau"],
+        ζ = motor_1_conf["zeta"],
+        k = motor_1_conf["k"],
+        rpm_max = motor_1_conf["rpm_max"] * 2 * π,
+        direction = motor_1_conf["direction"],
+    ),
     fc = fc_motor,
     gc = gc_motor,
     xc0 = [0.0, 0.0],
     uc0 = 0.0,
 )
 
-motor_2 = motor_1
-motor_3 = motor_1
-motor_4 = motor_1
+motor_2_conf = drone_conf["airframe"]["powered_prop_2"]["motor"]
+motor_2 = (
+    p = (
+        τ = motor_2_conf["tau"],
+        ζ = motor_2_conf["zeta"],
+        k = motor_2_conf["k"],
+        rpm_max = motor_2_conf["rpm_max"] * 2 * π,
+        direction = motor_2_conf["direction"],
+    ),
+    fc = fc_motor,
+    gc = gc_motor,
+    xc0 = [0.0, 0.0],
+    uc0 = 0.0,
+)
 
-# motors 2 and 4 spin in the opposite direction
-motor_2 = (motor_2..., p = (motor_2.p..., direction = -1.0))
-motor_4 = (motor_4..., p = (motor_4.p..., direction = -1.0))
+motor_3_conf = drone_conf["airframe"]["powered_prop_3"]["motor"]
+motor_3 = (
+    p = (
+        τ = motor_3_conf["tau"],
+        ζ = motor_3_conf["zeta"],
+        k = motor_3_conf["k"],
+        rpm_max = motor_3_conf["rpm_max"] * 2 * π,
+        direction = motor_3_conf["direction"],
+    ),
+    fc = fc_motor,
+    gc = gc_motor,
+    xc0 = [0.0, 0.0],
+    uc0 = 0.0,
+)
+
+motor_4_conf = drone_conf["airframe"]["powered_prop_4"]["motor"]
+motor_4 = (
+    p = (
+        τ = motor_4_conf["tau"],
+        ζ = motor_4_conf["zeta"],
+        k = motor_4_conf["k"],
+        rpm_max = motor_4_conf["rpm_max"] * 2 * π,
+        direction = motor_4_conf["direction"],
+    ),
+    fc = fc_motor,
+    gc = gc_motor,
+    xc0 = [0.0, 0.0],
+    uc0 = 0.0,
+)
 
 
 ### THE PROPS
 #
 fc_prop = (x, ω, p, t) -> nothing
-gc_prop = (x, ω, p, t) -> [p.k_f2 * ω^2, p.k_t * ω]
+gc_prop = (x, ω, p, t) -> [p.k_f2 * ω^2, p.k_t2 * ω^2]
 
-prop_1 = (p = (k_f2 = 5e-7, k_t = 2e-5), fc = fc_prop, gc = gc_prop, uc0 = 0.0)
-prop_2 = prop_1
-prop_3 = prop_1
-prop_4 = prop_1
+prop_1_conf = drone_conf["airframe"]["powered_prop_1"]["prop"]
+prop_1 = (
+    p = (k_f2 = prop_1_conf["k_f2"], k_t2 = prop_1_conf["k_t2"]),
+    fc = fc_prop,
+    gc = gc_prop,
+    uc0 = 0.0,
+)
+
+prop_2_conf = drone_conf["airframe"]["powered_prop_2"]["prop"]
+prop_2 = (
+    p = (k_f2 = prop_2_conf["k_f2"], k_t2 = prop_2_conf["k_t2"]),
+    fc = fc_prop,
+    gc = gc_prop,
+    uc0 = 0.0,
+)
+
+prop_3_conf = drone_conf["airframe"]["powered_prop_3"]["prop"]
+prop_3 = (
+    p = (k_f2 = prop_3_conf["k_f2"], k_t2 = prop_3_conf["k_t2"]),
+    fc = fc_prop,
+    gc = gc_prop,
+    uc0 = 0.0,
+)
+
+prop_4_conf = drone_conf["airframe"]["powered_prop_4"]["prop"]
+prop_4 = (
+    p = (k_f2 = prop_4_conf["k_f2"], k_t2 = prop_4_conf["k_t2"]),
+    fc = fc_prop,
+    gc = gc_prop,
+    uc0 = 0.0,
+)
 
 
 ### THE RPM SENSORS
@@ -122,12 +197,29 @@ function gc_airframe(x, r_ω, p, t; models)
     )
 end
 
+airframe_config = drone_conf["airframe"]
 airframe = (
     p = ( # position of the rotors in the B frame
-        x_prop_1_B = [10e-2, 10e-2, 0.0],
-        x_prop_2_B = [-10e-2, 10e-2, 0.0],
-        x_prop_3_B = [-10e-2, -10e-2, 0.0],
-        x_prop_4_B = [10e-2, -10e-2, 0.0],
+        x_prop_1_B = [
+            airframe_config["arm_length"] / sqrt(2),
+            airframe_config["arm_length"] / sqrt(2),
+            airframe_config["z_offset"],
+        ],
+        x_prop_2_B = [
+            -airframe_config["arm_length"] / sqrt(2),
+            airframe_config["arm_length"] / sqrt(2),
+            airframe_config["z_offset"],
+        ],
+        x_prop_3_B = [
+            -airframe_config["arm_length"] / sqrt(2),
+            -airframe_config["arm_length"] / sqrt(2),
+            airframe_config["z_offset"],
+        ],
+        x_prop_4_B = [
+            airframe_config["arm_length"] / sqrt(2),
+            -airframe_config["arm_length"] / sqrt(2),
+            airframe_config["z_offset"],
+        ],
     ),
     fc = fc_airframe,
     gc = gc_airframe,
@@ -148,11 +240,11 @@ if perform_tests
         if t < 5
             return [0.0, 0.0, 0.0, 0.0]
         elseif t < 10
-            return [1000 * 2 * π, 0.0, 0.0, 0.0]
+            return [1_000 * 2 * π, 0.0, 0.0, 0.0]
         elseif t < 20
             return [10_000 * 2 * π, 0.0, 0.0, 0.0]
         elseif t < 30
-            return [3000 * 2 * π, 0.0, 0.0, 0.0]
+            return [3_000 * 2 * π, 0.0, 0.0, 0.0]
         else
             return 3000 * 2 * π * [1.0, 1.0, 1.0, 1.0]
         end
@@ -164,7 +256,7 @@ if perform_tests
     plotlyjs()
     p1 = plot(
         out_airframe.tcs,
-        norm.([out_airframe.ycs[i, 1:3] for i = 1:size(out_airframe.ycs, 1)]),
+        norm.([out_airframe.ycs[i, 1:3] for i ∈ 1:size(out_airframe.ycs, 1)]),
         title = "Prop Tests: Total Thrust",
         name = "f",
     )
@@ -172,7 +264,7 @@ if perform_tests
 
     p2 = plot(
         out_airframe.tcs,
-        norm.([out_airframe.ycs[i, 4:6] for i = 1:size(out_airframe.ycs, 1)]),
+        norm.([out_airframe.ycs[i, 4:6] for i ∈ 1:size(out_airframe.ycs, 1)]),
         title = "Prop Tests: Total Torque",
         name = "τ",
     )
@@ -210,6 +302,7 @@ if perform_tests
     display(p3)
 end
 
+#=
 ### THE RIGID BODY
 #
 function fc_rigid_body(x, u, p, t)
@@ -251,7 +344,7 @@ rigid_body = (
 ### SENSORS
 # TODO: add noise and drift to sensors
 fd_gps = (x, u, p, t) -> nothing
-gd_gps = (x, u, p, t) -> return x
+gd_gps = (x, u, p, t) -> x
 gps_module = (
     p = nothing,
     fd = fd_gps,
@@ -331,6 +424,7 @@ function fc_drone(x, u, p, t; models)
 end
 
 function gc_drone(x, u, p, t; models)
+    # TODO
     return x
 end
 
@@ -348,3 +442,4 @@ drone = (
 )
 
 print_model_tree(drone)
+=#

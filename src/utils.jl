@@ -3,7 +3,7 @@
 @inline _check_rational(x::Int) = x // 1
 @inline _check_rational(x::AbstractFloat) = begin
     !SILENT &&
-    @error "Timesteps and durations should be given as `Rational` to avoid timing errors."
+        @error "Timesteps and durations should be given as `Rational` to avoid timing errors."
     rationalize(x)
 end
 @inline _check_rational(x) = oneunit(x) * _check_rational(x.val) # assume it's a Unitful.jl Quantity
