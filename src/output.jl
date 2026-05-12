@@ -184,13 +184,13 @@ function update_working_copy_ct!(model_mutable, t, xc, yc, T)
         xc !== nothing ? push!(model_mutable.xcs, eltype(model_mutable.xcs)(xc)) : nothing
     catch
         !SILENT &&
-            @error "Could not update CT state evolution. Please check your state variables for type consistency"
+            @error "Could not update CT state evolution in model \"$(model_mutable.name)\". Expected $(eltype(model_mutable.xcs)) but got $(typeof(xc))."
     end
     try
         yc !== nothing ? push!(model_mutable.ycs, eltype(model_mutable.ycs)(yc)) : nothing
     catch
         !SILENT &&
-            @error "Could not update CT output evolution. Please check your output variables for type consistency"
+            @error "Could not update CT output evolution in model \"$(model_mutable.name)\". Expected $(eltype(model_mutable.ycs)) but got $(typeof(yc))."
     end
 end
 
@@ -204,19 +204,19 @@ function update_working_copy_dt!(model_mutable, t, xd, yd, wd, T)
         xd !== nothing ? push!(model_mutable.xds, eltype(model_mutable.xds)(xd)) : nothing
     catch
         !SILENT &&
-            @error "Could not update DT state evolution. Please check your state variables for type consistency"
+            @error "Could not update DT state evolution in model \"$(model_mutable.name)\". Expected $(eltype(model_mutable.xds)) but got $(typeof(xd))."
     end
     try
         yd !== nothing ? push!(model_mutable.yds, eltype(model_mutable.yds)(yd)) : nothing
     catch
         !SILENT &&
-            @error "Could not update DT output evolution. Please check your output variables for type consistency"
+            @error "Could not update DT output evolution in model \"$(model_mutable.name)\". Expected $(eltype(model_mutable.yds)) but got $(typeof(yd))."
     end
     try
         wd !== nothing ? push!(model_mutable.wds, eltype(model_mutable.wds)(wd)) : nothing
     catch
         !SILENT &&
-            @error "Could not update DT random draw evolution. Please check your random variables for type consistency"
+            @error "Could not update DT random draw evolution in model \"$(model_mutable.name)\". Expected $(eltype(model_mutable.wds)) but got $(typeof(wd))."
     end
 end
 
