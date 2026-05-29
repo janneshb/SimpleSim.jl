@@ -106,7 +106,7 @@ function step_rkf45(Δt, fc, x, u, p, t, submodel_tree)
         )
     @safeguard_off
 
-    x_next_rk4 = x + 25 * k1 / 216 + 1408 * k3 / 2565 + 2197 * k4 / 4101 - k5 / 5
+    x_next_rk4 = x + 25 * k1 / 216 + 1408 * k3 / 2565 + 2197 * k4 / 4104 - k5 / 5
     x_next_rk5 =
         x + 16 * k1 / 135 + 6656 * k3 / 12825 + 28561 * k4 / 56430 - 9 * k5 / 50 +
         2 * k6 / 55

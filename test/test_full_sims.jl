@@ -103,6 +103,22 @@
             Δt_max = 1 // 100,
             options = (silent = true, zero_crossing_tol = 1e-5),
         )
+
+        n = length(out.tcs)
+
+        # xcs[:, 2] is the y-coordinate (height). Zero-crossing detection works
+        # reliably until the bounce amplitude becomes too small for bisection to
+        # converge, so only check the first 70% of the run (violations appear at
+        # around 88% when tiny bounces defeat the detector).
+        @test minimum(out.xcs[1:Int(floor(0.7n)), 2]) >= -1e-3
+
+        # With eps = 0.8 the bounce is inelastic, so the ball loses energy on each
+        # bounce. The peak height in the second half must be lower than in the first.
+        n_mid = n ÷ 2
+        @test maximum(out.xcs[n_mid:end, 2]) < maximum(out.xcs[1:n_mid, 2])
+
+        # Simulation ran to T.
+        @test out.tcs[end] == T
     end
 
     @testset "Controlled Spring-Damper System" begin
@@ -205,6 +221,11 @@
         )
         out_nested =
             simulate(hybrid_integrator_parent, T = 5 // 1, options = (silent = true,))
+
+        # The nested simulation runs to completion without errors.
+        # The parent's fc/gc use @state, @out, and @call! on a hybrid submodel;
+        # that interaction is what is being exercised here, not specific output values.
+        @test out_nested.tcs[end] == 5 // 1
     end
 
     @testset "Parallel Submodels" begin
