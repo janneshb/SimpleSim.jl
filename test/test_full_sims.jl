@@ -142,7 +142,6 @@
             xd0 = [0.0, 0.0],
         )
 
-        fc_system = (x, u, p, t, models) -> nothing
         function gc_system(x, r, p, t; models)
             xc_spring_damper = @state models.spring_damper # state CT
             yc_spring_damper = @out models.spring_damper # out CT
@@ -163,7 +162,6 @@
         end
 
         system = (
-            fc = fc_system,
             gc = gc_system,
             models = (spring_damper = spring_damper, controller = controller),
         )
@@ -202,19 +200,12 @@
         out = simulate(hybrid_integrator, T = 5 // 1, options = (silent = true,))
         @test abs(out.yds[end] - out.ycs[end]) < 1e-4
 
-        function fc_hybrid_integrator_parent(x, u, p, t; models)
-            x_sub = @state_ct models.submodel
-            y_sub = @out_ct models.submodel
-            return nothing
-        end
-
         function gc_hybrid_integrator_parent(x, u, p, t; models)
             y_sub = @call_ct! models.submodel nothing
             return y_sub
         end
 
         hybrid_integrator_parent = (
-            fc = fc_hybrid_integrator_parent,
             gc = gc_hybrid_integrator_parent,
             models = (submodel = hybrid_integrator,),
         )
@@ -256,9 +247,19 @@
             return [y_1, y_2]
         end
 
-        parent_1 = (fc = fc_parent, gc = gc_parent, models = [ct_integrator, dt_integrator])
+        parent_1 = (
+            fc = fc_parent,
+            gc = gc_parent,
+            xc0 = [0.0, 0.0],
+            models = [ct_integrator, dt_integrator],
+        )
 
-        parent_2 = (fc = fc_parent, gc = gc_parent, models = (ct_integrator, dt_integrator))
+        parent_2 = (
+            fc = fc_parent,
+            gc = gc_parent,
+            xc0 = [0.0, 0.0],
+            models = (ct_integrator, dt_integrator),
+        )
 
         out_1 = simulate(parent_1, T = 5 // 1, options = (silent = true,))
         out_2 = simulate(parent_2, T = 5 // 1, options = (silent = true,))
@@ -286,18 +287,15 @@
             Δt = 1 // 10,
         )
 
-        fc_parent = (x, u, p, t; models) -> nothing
         function gc_parent(x, u, p, t; models)
             for i in eachindex(models)
                 @call! models[i] nothing
             end
             return 1.0
         end
-        parent =
-            (fc = fc_parent, gc = gc_parent, models = (minimal_ct_model, minimal_dt_model))
+        parent = (gc = gc_parent, models = (minimal_ct_model, minimal_dt_model))
 
-        mega_parent =
-            (fc = fc_parent, gc = gc_parent, models = (parent, parent, minimal_ct_model))
+        mega_parent = (gc = gc_parent, models = (parent, parent, minimal_ct_model))
 
         buffer = IOBuffer()
         print_model_tree(buffer, mega_parent)
@@ -305,7 +303,6 @@
         flush(buffer)
         out_mega_parent = simulate(mega_parent, T = 1 // 1, options = (silent = true,))
 
-        fd_parent = (x, u, p, t; models) -> nothing
         function gd_parent(x, u, p, t; models)
             for i in eachindex(models)
                 @call! models[i] nothing
@@ -313,7 +310,6 @@
             return 1.0
         end
         dt_parent = (
-            fd = fd_parent,
             gd = gd_parent,
             models = (minimal_ct_model, minimal_dt_model),
             Δt = 1 // 10,
@@ -385,5 +381,38 @@
             simulate(parent_static, T = 1 // 1, uc = (t) -> t, options = (silent = true,))
         @test out_parent.ycs[end] ≈ 2.0       # submodel output is constant 2.0
         @test out_parent.tcs[end] == 1 // 1   # simulation ran to T
+    end
+
+    @testset "Initial State Validation" begin
+        # Hard error: fc defined but no xc0
+        no_xc0_model = (fc = (x, u, p, t) -> x, gc = (x, u, p, t) -> x)
+        @test_throws ErrorException simulate(no_xc0_model, T = 1 // 1, options = (silent = true,))
+
+        # Hard error: fd defined but no xd0
+        no_xd0_model = (fd = (x, u, p, t) -> x, gd = (x, u, p, t) -> x, Δt = 1 // 10)
+        @test_throws ErrorException simulate(no_xd0_model, T = 1 // 1, options = (silent = true,))
+
+        # Warning: fc return size does not match xc0
+        # (simulation crashes mid-run due to the mismatch, hence the try/catch)
+        mismatched_ct = (fc = (x, u, p, t) -> [1.0, 2.0], gc = (x, u, p, t) -> x, xc0 = 0.0)
+        @test_logs match_mode = :any (:warn, r"xc0::Float64") begin
+            try
+                simulate(mismatched_ct, T = 1 // 1, options = (silent = false,))
+            catch
+            end
+        end
+
+        # Warning: fd returns a type incompatible with xd0
+        mismatched_dt = (
+            fd = (x, u, p, t) -> [1.0, 2.0],
+            gd = (x, u, p, t) -> x,
+            xd0 = 0.0,
+            Δt = 1 // 10,
+        )
+        @test_logs match_mode = :any (:warn, r"xd0::Float64") simulate(
+            mismatched_dt,
+            T = 1 // 1,
+            options = (silent = false,),
+        )
     end
 end
