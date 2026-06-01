@@ -103,6 +103,14 @@ function init_working_copy(
         uc0 === nothing ?
         (hasproperty(model, :uc0) && model.uc0 !== nothing ? model.uc0 : nothing) : uc0
 
+    xd0 =
+        hasproperty(model, :xd0) && model.xd0 !== nothing ?
+        (xd0 === nothing ? model.xd0 : xd0) : xd0
+    ud0 =
+        ud0 === nothing ?
+        (hasproperty(model, :ud0) && model.ud0 !== nothing ? model.ud0 : nothing) : ud0
+    wd0 = !structure_only && hasproperty(model, :wd) ? model.wd(xd0, ud0, optional_p, t0, rng_dt) : nothing
+
     if !structure_only && hasproperty(model, :fc) && model.fc !== nothing
         if xc0 === nothing
             error(
@@ -115,7 +123,7 @@ function init_working_copy(
             Δxc = model.fc(xc0, uc0, optional_p, t0; fc_kwargs...)
             if !isnothing(Δxc)
                 try
-                    xc0 + Δxc * 1  # test that x + Δt * x_dot is defined (required by all integrators)
+                    xc0 + Δxc * 1  # verify x + Δt * dx/dt is defined
                 catch
                     !SILENT &&
                         @warn "Model \"$model_name\": xc0 + Δt * fc(xc0, ...) is not defined for types (xc0::$(typeof(xc0)), fc result::$(typeof(Δxc))). Ensure scalar multiplication and addition are implemented for the state type."
@@ -124,21 +132,6 @@ function init_working_copy(
         catch
         end
     end
-
-    ycs0 =
-        !structure_only && hasproperty(model, :gc) && model.gc !== nothing ?
-        (
-            length(sub_tree) > 0 ? [model.gc(xc0, uc0, optional_p, t0; models = sub_tree)] :
-            [model.gc(xc0, uc0, optional_p, t0)]
-        ) : nothing
-
-    xd0 =
-        hasproperty(model, :xd0) && model.xd0 !== nothing ?
-        (xd0 === nothing ? model.xd0 : xd0) : xd0
-    ud0 =
-        ud0 === nothing ?
-        (hasproperty(model, :ud0) && model.ud0 !== nothing ? model.ud0 : nothing) : ud0
-    wd0 = !structure_only && hasproperty(model, :wd) ? model.wd(xd0, ud0, optional_p, t0, rng_dt) : nothing
 
     if !structure_only && hasproperty(model, :fd) && model.fd !== nothing
         if xd0 === nothing
@@ -153,7 +146,7 @@ function init_working_copy(
             xd_check = model.fd(xd0, ud0, optional_p, t0; fd_kwargs...)
             if !isnothing(xd_check)
                 try
-                    xd0 + xd_check  # test that the result is structurally compatible with the current state
+                    xd0 + xd_check  # verify result is compatible with xd0
                 catch
                     !SILENT &&
                         @warn "Model \"$model_name\": fd(xd0, ...) is not structurally compatible with xd0 (xd0::$(typeof(xd0)), fd result::$(typeof(xd_check))). Ensure the dynamics return the same type as the initial state."
@@ -162,6 +155,112 @@ function init_working_copy(
         catch
         end
     end
+
+    if !structure_only && length(sub_tree) > 0
+        function rebuild_sub_tree(models::NamedTuple, old_sub_tree, captured)
+            return NamedTuple{keys(models)}((
+                (
+                    begin
+                        (cap_uc, cap_ud) = get(captured, objectid(old_sub_tree[fn]), (nothing, nothing))
+                        uc0_c = hasproperty(m_i, :uc0) && m_i.uc0 !== nothing ? nothing : cap_uc
+                        ud0_c = hasproperty(m_i, :ud0) && m_i.ud0 !== nothing ? nothing : cap_ud
+                        init_working_copy(
+                            m_i,
+                            t0 = t0,
+                            Δt = Δt,
+                            uc0 = uc0_c,
+                            ud0 = ud0_c;
+                            level = level + 1,
+                            recursive = true,
+                            structure_only = structure_only,
+                            fieldname = ".$fn",
+                            integrator = integrator,
+                            T = T,
+                        )
+                    end for (m_i, fn) in zip(models, keys(models))
+                )...,
+            ))
+        end
+
+        function rebuild_sub_tree(models::Tuple, old_sub_tree, captured)
+            return (
+                (
+                    begin
+                        (cap_uc, cap_ud) = get(captured, objectid(old_sub_tree[i]), (nothing, nothing))
+                        uc0_c = hasproperty(m_i, :uc0) && m_i.uc0 !== nothing ? nothing : cap_uc
+                        ud0_c = hasproperty(m_i, :ud0) && m_i.ud0 !== nothing ? nothing : cap_ud
+                        init_working_copy(
+                            m_i,
+                            t0 = t0,
+                            Δt = Δt,
+                            uc0 = uc0_c,
+                            ud0 = ud0_c;
+                            level = level + 1,
+                            recursive = true,
+                            structure_only = structure_only,
+                            fieldname = "($i)",
+                            integrator = integrator,
+                            T = T,
+                        )
+                    end for (i, m_i) in enumerate(models)
+                )...,
+            )
+        end
+
+        function rebuild_sub_tree(models::Vector, old_sub_tree, captured)
+            return [
+                begin
+                    (cap_uc, cap_ud) = get(captured, objectid(old_sub_tree[i]), (nothing, nothing))
+                    uc0_c = hasproperty(m_i, :uc0) && m_i.uc0 !== nothing ? nothing : cap_uc
+                    ud0_c = hasproperty(m_i, :ud0) && m_i.ud0 !== nothing ? nothing : cap_ud
+                    init_working_copy(
+                        m_i,
+                        t0 = t0,
+                        Δt = Δt,
+                        uc0 = uc0_c,
+                        ud0 = ud0_c;
+                        level = level + 1,
+                        recursive = true,
+                        structure_only = structure_only,
+                        fieldname = "[$i]",
+                        integrator = integrator,
+                        T = T,
+                    )
+                end for (i, m_i) in enumerate(models)
+            ]
+        end
+
+        global INIT_INPUT_CAPTURE = Dict{UInt64, Tuple{Any, Any}}()
+        try
+            if hasproperty(model, :gc) && model.gc !== nothing
+                gc_probe_kwargs = length(sub_tree) > 0 ? (models = sub_tree,) : ()
+                model.gc(xc0, uc0, optional_p, t0; gc_probe_kwargs...)
+            end
+            if hasproperty(model, :gd) && model.gd !== nothing
+                gd_probe_kwargs = length(sub_tree) > 0 ? (models = sub_tree,) : ()
+                gd_probe_kwargs = wd0 !== nothing ? (gd_probe_kwargs..., w = wd0) : gd_probe_kwargs
+                model.gd(xd0, ud0, optional_p, t0; gd_probe_kwargs...)
+            end
+        catch e
+            global INIT_INPUT_CAPTURE = nothing
+            rethrow()
+        end
+        captured = INIT_INPUT_CAPTURE
+        global INIT_INPUT_CAPTURE = nothing
+
+        needs_rebuild = any(v -> v[1] !== nothing || v[2] !== nothing, values(captured))
+        if needs_rebuild && hasproperty(model, :models) && model.models !== nothing
+            global MODEL_COUNT = model_id
+            sub_tree = rebuild_sub_tree(model.models, sub_tree, captured)
+        end
+    end
+
+    ycs0 =
+        !structure_only && hasproperty(model, :gc) && model.gc !== nothing ?
+        (
+            length(sub_tree) > 0 ? [model.gc(xc0, uc0, optional_p, t0; models = sub_tree)] :
+            [model.gc(xc0, uc0, optional_p, t0)]
+        ) : nothing
 
     gd_kwargs = length(sub_tree) > 0 ? (models = sub_tree,) : ()
     gd_kwargs = hasproperty(model, :wd) ? (gd_kwargs..., w = wd0) : gd_kwargs

@@ -350,7 +350,7 @@
     end
 
     @testset "Output-Only Models (fc/fd optional)" begin
-        # CT model with only gc — static output function, no dynamics
+        # CT model with only gc, no dynamics
         gc_static_ct = (x, u, p, t) -> u^2
         static_ct = (gc = gc_static_ct,)
         out_ct = simulate(static_ct, T = 1 // 1, uc = (t) -> t, options = (silent = true,))
@@ -358,7 +358,7 @@
         @test !isnothing(out_ct.ycs)          # output is recorded
         @test out_ct.tcs[end] == 1 // 1       # simulation ran to T
 
-        # DT model with only gd — static output function, no dynamics
+        # DT model with only gd, no dynamics
         gd_static_dt = (x, u, p, t) -> u + 1
         static_dt = (gd = gd_static_dt, Δt = 1 // 10)
         out_dt = simulate(static_dt, T = 1 // 1, ud = (t) -> t, options = (silent = true,))
@@ -366,9 +366,7 @@
         @test !isnothing(out_dt.yds)          # output is recorded
         @test out_dt.tds[end] == 1 // 1       # simulation ran to T
 
-        # Output-only CT submodel called via @call! from a parent
-        # gc_sub uses only t (not u) to avoid the uc0=nothing issue at init
-        # (input inheritance for submodels is a v0.1.6 TODO, not yet implemented)
+        # output-only CT submodel called via @call! from a parent
         gc_sub = (x, u, p, t) -> 2.0
         static_sub = (gc = gc_sub,)
 
@@ -384,16 +382,13 @@
     end
 
     @testset "Initial State Validation" begin
-        # Hard error: fc defined but no xc0
         no_xc0_model = (fc = (x, u, p, t) -> x, gc = (x, u, p, t) -> x)
         @test_throws ErrorException simulate(no_xc0_model, T = 1 // 1, options = (silent = true,))
 
-        # Hard error: fd defined but no xd0
         no_xd0_model = (fd = (x, u, p, t) -> x, gd = (x, u, p, t) -> x, Δt = 1 // 10)
         @test_throws ErrorException simulate(no_xd0_model, T = 1 // 1, options = (silent = true,))
 
-        # Warning: fc return size does not match xc0
-        # (simulation crashes mid-run due to the mismatch, hence the try/catch)
+        # size mismatch between fc return and xc0 should warn
         mismatched_ct = (fc = (x, u, p, t) -> [1.0, 2.0], gc = (x, u, p, t) -> x, xc0 = 0.0)
         @test_logs match_mode = :any (:warn, r"xc0::Float64") begin
             try
@@ -402,7 +397,6 @@
             end
         end
 
-        # Warning: fd returns a type incompatible with xd0
         mismatched_dt = (
             fd = (x, u, p, t) -> [1.0, 2.0],
             gd = (x, u, p, t) -> x,
@@ -414,5 +408,23 @@
             T = 1 // 1,
             options = (silent = false,),
         )
+    end
+
+    @testset "Initial Input Inference" begin
+        # child gc returns -1 when u is nothing, else 2*u
+        # if uc0 is correctly inferred from the parent's first call (u=3.0), ycs[1] = 6.0
+        gc_child = (x, u, p, t) -> isnothing(u) ? -1.0 : u * 2.0
+        child = (gc = gc_child,)
+
+        function gc_parent_infer(x, u, p, t; models)
+            y_child = @call! models.child u
+            return y_child
+        end
+        parent_infer = (gc = gc_parent_infer, models = (child = child,))
+
+        out = simulate(parent_infer, T = 1 // 1, uc = (t) -> 3.0, options = (silent = true,))
+
+        @test out.models.child.ycs[1] ≈ 6.0
+        @test out.ycs[1] ≈ 6.0
     end
 end

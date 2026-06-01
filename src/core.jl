@@ -85,6 +85,7 @@ function simulate(
     @set_options (out_stream = out_stream, options...)
     global MODEL_CALLS_DISABLED = false
     global CONTEXT = ContextUnknown::SimulationContext
+    global INIT_INPUT_CAPTURE = nothing
 
     min_logging_level = DEBUG ? Debug : Info
     logger = SimpleLogger(OUT_STREAM, min_logging_level)
@@ -238,6 +239,14 @@ macro call_dt!(model, u)
 end
 
 function model_callable_ct!(uc, t, model, model_mutable, Δt, integrator, T)
+    if INIT_INPUT_CAPTURE !== nothing
+        existing = get(INIT_INPUT_CAPTURE, objectid(model_mutable), (nothing, nothing))
+        INIT_INPUT_CAPTURE[objectid(model_mutable)] = (uc, existing[2])
+        xc = model_mutable.xcs !== nothing ? model_mutable.xcs[end] : nothing
+        yc = model_mutable.ycs !== nothing ? model_mutable.ycs[end] : nothing
+        return (Δt, xc, yc, false)
+    end
+
     context = @context # Warn if we are still in DT context
     if context === ContextDT::SimulationContext
         !SILENT &&
@@ -345,6 +354,14 @@ function model_callable_ct!(uc, t, model, model_mutable, Δt, integrator, T)
 end
 
 function model_callable_dt!(ud, t, model, model_mutable, T)
+    if INIT_INPUT_CAPTURE !== nothing
+        existing = get(INIT_INPUT_CAPTURE, objectid(model_mutable), (nothing, nothing))
+        INIT_INPUT_CAPTURE[objectid(model_mutable)] = (existing[1], ud)
+        xd = model_mutable.xds !== nothing ? model_mutable.xds[end] : nothing
+        yd = model_mutable.yds !== nothing ? model_mutable.yds[end] : nothing
+        return (xd, yd, false)
+    end
+
     @dt
     xd_next = model_mutable.xds === nothing ? nothing : model_mutable.xds[end]
     yd_next = model_mutable.yds === nothing ? nothing : model_mutable.yds[end]
