@@ -69,10 +69,6 @@ controller = (
 
 # CONTROLLED SYSTEM
 #
-function fc_controlled_system(x, r, p, t; models)
-    return nothing # state-less, will not even be called
-end
-
 function gc_controlled_system(x, w, p, t; models)
     # compute error --> input to controller
     # note: e also contains ė
@@ -90,7 +86,6 @@ function gc_controlled_system(x, w, p, t; models)
 end
 
 controlled_system = (
-    fc = fc_controlled_system,
     gc = gc_controlled_system,
     p = (),
     models = (inverted_pendulum = inverted_pendulum, controller = controller),

@@ -63,8 +63,6 @@ inner_dt = (
 )
 
 
-fc_wrapper(x, u, p, t; models) = nothing
-
 function gc_wrapper(x, u, p, t; models)
     y_ct_inner = @call_ct! models.inner_hybrid 0.0
     y_dt_inner = @call_dt! models.inner_hybrid 0.0
@@ -73,7 +71,6 @@ function gc_wrapper(x, u, p, t; models)
 end
 wrapper = (
     p = (),
-    fc = fc_wrapper,
     gc = gc_wrapper,
     models = (inner_hybrid = inner_hybrid, inner_dt = inner_dt),
 )
