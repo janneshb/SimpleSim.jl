@@ -316,7 +316,7 @@ function model_callable_ct!(uc, t, model, model_mutable, Δt, integrator, T)
                         end
                     catch
                         !SILENT && @warn "Zero-crossing tolerance could not be met."
-                        break # probably a Rational overflow occured. Accept current tolerance but print warning
+                        break # probably a Rational overflow occurred. Accept current tolerance but print warning
                     end
                 end
 
@@ -394,4 +394,3 @@ function model_callable_dt!(ud, t, model, model_mutable, T)
     @call_completed
     return (xd_next, yd_next, updated_state)
 end
-
