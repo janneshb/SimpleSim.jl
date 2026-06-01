@@ -1,10 +1,16 @@
 # @quiet macro disables DEBUG and DISABLE_PROGRESS output for the command given to it
 macro quiet(command)
+    result = gensym(:quiet_result)
     quote
         exSILENT = SILENT
         global SILENT = true
-        $(esc(command))
-        global SILENT = exSILENT
+        local $(result)
+        try
+            $(result) = $(esc(command))
+        finally
+            global SILENT = exSILENT
+        end
+        $(result)
     end
 end
 

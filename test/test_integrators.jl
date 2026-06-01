@@ -39,19 +39,72 @@
     end
 
     @testset "Forward Euler" begin
-
+        # dx/dt = -x, x(0) = 1, exact solution x(t) = exp(-t).
+        # Step from t=0 to t=1 with dt=0.01 and compare to exp(-1).
+        # Euler is first-order: global error scales as O(dt) ~ 0.01.
+        fc = (x, u, p, t) -> -x
+        Δt = 1 // 100
+        x = 1.0
+        t = 0 // 1
+        while t < 1 // 1
+            x, _ = SimpleSim.step_ct(Δt, fc, x, nothing, nothing, t, (;); integrator = Euler)
+            t += Δt
+        end
+        @test abs(x - exp(-1.0)) < 5e-3   # first-order global error bound
     end
 
     @testset "Heun's Method / Explicit Trapezoidal" begin
-
+        # Same exponential decay problem as the Euler test.
+        # Heun is second-order: global error scales as O(dt^2) ~ 1e-4, so roughly
+        # 50x more accurate than Euler for the same step size.
+        fc = (x, u, p, t) -> -x
+        Δt = 1 // 100
+        x = 1.0
+        t = 0 // 1
+        while t < 1 // 1
+            x, _ = SimpleSim.step_ct(Δt, fc, x, nothing, nothing, t, (;); integrator = Heun)
+            t += Δt
+        end
+        @test abs(x - exp(-1.0)) < 1e-4   # second-order global error bound
     end
 
     @testset "4th Order Runge-Kutta" begin
-
+        # Same exponential decay problem.
+        # RK4 is fourth-order: global error scales as O(dt^4) ~ 1e-8,
+        # dramatically more accurate than Heun for the same step size.
+        fc = (x, u, p, t) -> -x
+        Δt = 1 // 100
+        x = 1.0
+        t = 0 // 1
+        while t < 1 // 1
+            x, _ = SimpleSim.step_ct(Δt, fc, x, nothing, nothing, t, (;); integrator = RK4)
+            t += Δt
+        end
+        @test abs(x - exp(-1.0)) < 1e-7   # fourth-order global error bound
     end
 
     @testset "Runge-Kutta-Fehlberg" begin
+        # RKF45 embeds a 4th and 5th order RK formula and uses their difference
+        # as a truncation error estimate to adapt the step size.
 
+        # Part 1: single-step accuracy on the smooth exponential decay problem.
+        # The RK5 local error is O(dt^6), so one step of dt=0.01 should match
+        # the exact solution to near machine precision.
+        fc = (x, u, p, t) -> -x
+        x_rkf45, Δt_out = SimpleSim.step_ct(
+            1 // 100, fc, 1.0, nothing, nothing, 0 // 1, (;); integrator = RKF45,
+        )
+        @test abs(x_rkf45 - exp(-0.01)) < 1e-12  # RK5 per-step error
+        @test Δt_out ≈ 0.01                        # smooth problem: no step reduction needed
+
+        # Part 2: adaptive step reduction on a stiff problem.
+        # dx/dt = -50x with dt=0.1 produces a large truncation error, so step_rkf45
+        # recurses with a smaller dt and returns the accepted (smaller) step.
+        fc_stiff = (x, u, p, t) -> -50.0 * x
+        _, Δt_adapted = SimpleSim.step_rkf45(
+            1 // 10, fc_stiff, 1.0, nothing, nothing, 0 // 1, (;),
+        )
+        @test Δt_adapted < 0.1   # step was reduced to meet the tolerance
     end
 
     @testset "Step CT Dispatch" begin

@@ -83,6 +83,9 @@ function simulate(
     # evaluate options, if given any
     @set_options DEFAULT_CONFIG
     @set_options (out_stream = out_stream, options...)
+    global MODEL_CALLS_DISABLED = false
+    global CONTEXT = ContextUnknown::SimulationContext
+    global INIT_INPUT_CAPTURE = nothing
 
     min_logging_level = DEBUG ? Debug : Info
     logger = SimpleLogger(OUT_STREAM, min_logging_level)
@@ -122,19 +125,12 @@ function simulate(
         T = T,
     )
 
-    # initialize the model
-    # this also initializes all submodels recursively
-    model_mutable.init!(model_mutable);
-
     # simulate all systems that are due now
     t = t0
     simulation_is_running = true
     while simulation_is_running
         simulation_is_running, t = loop!(model_mutable, uc, ud, t, Δt_max, T)
     end
-
-    # "destroy" the model and all of its submodels
-    model_mutable.destroy!(model_mutable);
 
     DEBUG && !SILENT && println(OUT_STREAM, "Simulation has terminated.")
     DEBUG && !SILENT && println(OUT_STREAM, "Processing simulation logs...")
@@ -195,8 +191,7 @@ macro call!(model, u)
         model_to_call = $(esc(model))
         t = $(esc(:t))
         if isHybrid(model_to_call)
-            !SILENT &&
-                @error "@call! is ambiguous for hybrid systems. Please specify using @call_ct! or @call_dt!."
+            error("@call! is ambiguous for hybrid systems. Please specify using @call_ct! or @call_dt!.")
         elseif isCT(model_to_call)
             @call_ct! model_to_call $(esc(u))
         elseif isDT(model_to_call)
@@ -214,7 +209,6 @@ See [`@call!`](@ref).
 macro call_ct!(model, u)
     quote
         MODEL_CALLS_DISABLED &&
-            !SILENT &&
             !SILENT &&
             @error "@call! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in unambiguous cases)."
 
@@ -245,6 +239,14 @@ macro call_dt!(model, u)
 end
 
 function model_callable_ct!(uc, t, model, model_mutable, Δt, integrator, T)
+    if INIT_INPUT_CAPTURE !== nothing
+        existing = get(INIT_INPUT_CAPTURE, objectid(model_mutable), (nothing, nothing))
+        INIT_INPUT_CAPTURE[objectid(model_mutable)] = (uc, existing[2])
+        xc = model_mutable.xcs !== nothing ? model_mutable.xcs[end] : nothing
+        yc = model_mutable.ycs !== nothing ? model_mutable.ycs[end] : nothing
+        return (Δt, xc, yc, false)
+    end
+
     context = @context # Warn if we are still in DT context
     if context === ContextDT::SimulationContext
         !SILENT &&
@@ -260,81 +262,85 @@ function model_callable_ct!(uc, t, model, model_mutable, Δt, integrator, T)
     updated_state = false
     if due(model_mutable, t)
         optional_p = hasproperty(model, :p) ? model.p : nothing
-        xc_next, Δt_actual = step_ct(
-            Δt,
-            model.fc,
-            model_mutable.xcs === nothing ? nothing : model_mutable.xcs[end],
-            uc,
-            optional_p,
-            model_mutable.tcs[end],
-            submodels;
-            integrator = integrator,
-        )
         t_next = model_mutable.tcs[end] + Δt_actual
 
-        # Zero-crossing detection if `zc` is defined
-        if hasproperty(model, :zc) &&
-           model.zc !== nothing &&
-           model.zc(xc_next, optional_p, t_next) < -model_mutable.zero_crossing_tol
-            # Initialize bisection algorithm
-            xc_lower = model_mutable.xcs[end]
-            t_lower = model_mutable.tcs[end]
-            t_upper = t_next
-
-            # Run bisection until zero crossing tolerance is met, always use RK4 for this
-            while true
-                try
-                    Δt_bi = (t_upper - t_lower) / 2
-                    xc_bi, _ = step_ct(
-                        Δt_bi,
-                        model.fc,
-                        xc_lower,
-                        uc,
-                        optional_p,
-                        t_lower,
-                        submodels;
-                        integrator = RK4,
-                    )
-                    zc_bi = model.zc(xc_bi, optional_p, t_lower + Δt_bi)
-
-                    if zc_bi < -model_mutable.zero_crossing_tol / 2
-                        # t_lower + Δt_bi still leads to zero crossing
-                        t_upper = t_lower + Δt_bi
-                    elseif zc_bi > model_mutable.zero_crossing_tol / 2
-                        # t_lower + Δt_bi doesn't lead to zero crossing anymore
-                        t_lower = t_lower + Δt_bi
-                        xc_lower = xc_bi
-                    else
-                        t_next = t_lower + Δt_bi
-                        xc_next = xc_bi
-                        break # termination of algorithm if within +/-(zero_crossing_tol/2)
-                    end
-                catch
-                    !SILENT && @warn "Zero-crossing tolerance could not be met."
-                    break # probably a Rational overflow occured. Accept current tolerance but print warning
-                end
-            end
-
-            xc_next = model.zc_exec(xc_next, uc, optional_p, t_next) # apply zero crossing change
-            yc_next =
-                length(submodels) > 0 ?
-                model.gc(xc_next, uc, optional_p, t_next; models = submodels) :
-                model.gc(xc_next, uc, optional_p, t_next)
-            Δt_post_zc = model_mutable.tcs[end] + Δt_actual - t_next
-            update_working_copy_ct!(model_mutable, t_next, xc_next, yc_next, T)
-
-            # fill in the remaining time of Δt to avoid Rational overflow in future iterations
-            xc_next, _ = step_ct(
-                Δt_post_zc,
+        if hasproperty(model, :fc) && model.fc !== nothing
+            xc_next, Δt_actual = step_ct(
+                Δt,
                 model.fc,
-                xc_next,
+                model_mutable.xcs === nothing ? nothing : model_mutable.xcs[end],
                 uc,
                 optional_p,
-                t_next,
+                model_mutable.tcs[end],
                 submodels;
-                integrator = RK4,
+                integrator = integrator,
             )
-            t_next += Δt_post_zc
+            t_next = model_mutable.tcs[end] + Δt_actual
+
+            # Zero-crossing detection if `zc` is defined
+            if hasproperty(model, :zc) &&
+               model.zc !== nothing &&
+               model.zc(xc_next, optional_p, t_next) < -model_mutable.zero_crossing_tol
+                # Initialize bisection algorithm
+                xc_lower = model_mutable.xcs[end]
+                t_lower = model_mutable.tcs[end]
+                t_upper = t_next
+
+                # Run bisection until zero crossing tolerance is met, always use RK4 for this
+                while true
+                    try
+                        Δt_bi = (t_upper - t_lower) / 2
+                        xc_bi, _ = step_ct(
+                            Δt_bi,
+                            model.fc,
+                            xc_lower,
+                            uc,
+                            optional_p,
+                            t_lower,
+                            submodels;
+                            integrator = RK4,
+                        )
+                        zc_bi = model.zc(xc_bi, optional_p, t_lower + Δt_bi)
+
+                        if zc_bi < -model_mutable.zero_crossing_tol / 2
+                            # t_lower + Δt_bi still leads to zero crossing
+                            t_upper = t_lower + Δt_bi
+                        elseif zc_bi > model_mutable.zero_crossing_tol / 2
+                            # t_lower + Δt_bi doesn't lead to zero crossing anymore
+                            t_lower = t_lower + Δt_bi
+                            xc_lower = xc_bi
+                        else
+                            t_next = t_lower + Δt_bi
+                            xc_next = xc_bi
+                            break # termination of algorithm if within +/-(zero_crossing_tol/2)
+                        end
+                    catch
+                        !SILENT && @warn "Zero-crossing tolerance could not be met."
+                        break # probably a Rational overflow occurred. Accept current tolerance but print warning
+                    end
+                end
+
+                xc_next = model.zc_exec(xc_next, uc, optional_p, t_next) # apply zero crossing change
+                yc_next =
+                    length(submodels) > 0 ?
+                    model.gc(xc_next, uc, optional_p, t_next; models = submodels) :
+                    model.gc(xc_next, uc, optional_p, t_next)
+                Δt_post_zc = model_mutable.tcs[end] + Δt_actual - t_next
+                update_working_copy_ct!(model_mutable, t_next, xc_next, yc_next, T)
+
+                # fill in the remaining time of Δt to avoid Rational overflow in future iterations
+                xc_next, _ = step_ct(
+                    Δt_post_zc,
+                    model.fc,
+                    xc_next,
+                    uc,
+                    optional_p,
+                    t_next,
+                    submodels;
+                    integrator = RK4,
+                )
+                t_next += Δt_post_zc
+            end
         end
         yc_next =
             length(submodels) > 0 ?
@@ -348,6 +354,14 @@ function model_callable_ct!(uc, t, model, model_mutable, Δt, integrator, T)
 end
 
 function model_callable_dt!(ud, t, model, model_mutable, T)
+    if INIT_INPUT_CAPTURE !== nothing
+        existing = get(INIT_INPUT_CAPTURE, objectid(model_mutable), (nothing, nothing))
+        INIT_INPUT_CAPTURE[objectid(model_mutable)] = (existing[1], ud)
+        xd = model_mutable.xds !== nothing ? model_mutable.xds[end] : nothing
+        yd = model_mutable.yds !== nothing ? model_mutable.yds[end] : nothing
+        return (xd, yd, false)
+    end
+
     @dt
     xd_next = model_mutable.xds === nothing ? nothing : model_mutable.xds[end]
     yd_next = model_mutable.yds === nothing ? nothing : model_mutable.yds[end]
@@ -360,15 +374,17 @@ function model_callable_dt!(ud, t, model, model_mutable, T)
         wd_next =
             hasproperty(model, :wd) ?
             model.wd(xd_next, ud, optional_p, t, model_mutable.rng_dt) : nothing
-        xd_next = step_dt(
-            model.fd,
-            model_mutable.xds === nothing ? nothing : model_mutable.xds[end],
-            ud,
-            optional_p,
-            t,
-            submodels,
-            wd_next,
-        )
+        if hasproperty(model, :fd) && model.fd !== nothing
+            xd_next = step_dt(
+                model.fd,
+                model_mutable.xds === nothing ? nothing : model_mutable.xds[end],
+                ud,
+                optional_p,
+                t,
+                submodels,
+                wd_next,
+            )
+        end
         gd_kwargs = length(submodels) > 0 ? (models = submodels,) : ()
         gd_kwargs = wd_next === nothing ? gd_kwargs : (gd_kwargs..., w = wd_next)
         yd_next = model.gd(xd_next, ud, optional_p, t; gd_kwargs...)
@@ -377,12 +393,4 @@ function model_callable_dt!(ud, t, model, model_mutable, T)
     end
     @call_completed
     return (xd_next, yd_next, updated_state)
-end
-
-function model_init!(model, model_mutable)
-    # TODO!
-end
-
-function model_destroy!(model, model_mutable)
-    # TODO!
 end

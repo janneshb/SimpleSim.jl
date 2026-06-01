@@ -49,7 +49,7 @@ function print_model_tree(model; io = stdout)
         println(io, "$(model.model_id) ($(model.type)): $(model.name) ")
     end
 
-    @quiet working_copy = init_working_copy(model, structure_only = true)
+    working_copy = @quiet init_working_copy(model, structure_only = true)
 
     # print depth first / slightly adjusted FIFO to maintain order of models
     stack = Any[working_copy]

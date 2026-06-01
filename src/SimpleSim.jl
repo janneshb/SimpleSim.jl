@@ -28,6 +28,7 @@ global DEFAULT_CONFIG = @gather_default_config
 global MODEL_CALLS_DISABLED = false
 global CONTEXT = ContextUnknown::SimulationContext
 global MODEL_COUNT = 0
+global INIT_INPUT_CAPTURE = nothing
 
 include("utils.jl")
 include("core.jl")

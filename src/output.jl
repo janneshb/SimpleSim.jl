@@ -26,6 +26,7 @@ function init_working_copy(
                     recursive = true,
                     structure_only = structure_only,
                     fieldname = ".$fieldname_i",
+                    integrator = integrator,
                     T = T,
                 ) for (m_i, fieldname_i) in zip(models, fieldnames(typeof(models)))
             )...,
@@ -45,6 +46,7 @@ function init_working_copy(
                     recursive = true,
                     structure_only = structure_only,
                     fieldname = "($fieldname_i)",
+                    integrator = integrator,
                     T = T,
                 ) for (m_i, fieldname_i) in zip(models, fieldnames(typeof(models)))
             )...,
@@ -63,6 +65,7 @@ function init_working_copy(
                 recursive = true,
                 structure_only = structure_only,
                 fieldname = "[$i]",
+                integrator = integrator,
                 T = T,
             ) for (i, m_i) in enumerate(models)
         ]
@@ -99,6 +102,159 @@ function init_working_copy(
     uc0 =
         uc0 === nothing ?
         (hasproperty(model, :uc0) && model.uc0 !== nothing ? model.uc0 : nothing) : uc0
+
+    xd0 =
+        hasproperty(model, :xd0) && model.xd0 !== nothing ?
+        (xd0 === nothing ? model.xd0 : xd0) : xd0
+    ud0 =
+        ud0 === nothing ?
+        (hasproperty(model, :ud0) && model.ud0 !== nothing ? model.ud0 : nothing) : ud0
+    wd0 = !structure_only && hasproperty(model, :wd) ? model.wd(xd0, ud0, optional_p, t0, rng_dt) : nothing
+
+    if !structure_only && hasproperty(model, :fc) && model.fc !== nothing
+        if xc0 === nothing
+            error(
+                "Model \"$model_name\" has continuous-time dynamics (fc) but no initial state xc0 was provided. " *
+                "Set xc0 in the model definition or pass it to simulate().",
+            )
+        end
+        try
+            fc_kwargs = length(sub_tree) > 0 ? (models = sub_tree,) : ()
+            Δxc = model.fc(xc0, uc0, optional_p, t0; fc_kwargs...)
+            if !isnothing(Δxc)
+                try
+                    xc0 + Δxc * 1  # verify x + Δt * dx/dt is defined
+                catch
+                    !SILENT &&
+                        @warn "Model \"$model_name\": xc0 + Δt * fc(xc0, ...) is not defined for types (xc0::$(typeof(xc0)), fc result::$(typeof(Δxc))). Ensure scalar multiplication and addition are implemented for the state type."
+                end
+            end
+        catch
+        end
+    end
+
+    if !structure_only && hasproperty(model, :fd) && model.fd !== nothing
+        if xd0 === nothing
+            error(
+                "Model \"$model_name\" has discrete-time dynamics (fd) but no initial state xd0 was provided. " *
+                "Set xd0 in the model definition or pass it to simulate().",
+            )
+        end
+        try
+            fd_kwargs = length(sub_tree) > 0 ? (models = sub_tree,) : ()
+            fd_kwargs = wd0 !== nothing ? (fd_kwargs..., w = wd0) : fd_kwargs
+            xd_check = model.fd(xd0, ud0, optional_p, t0; fd_kwargs...)
+            if !isnothing(xd_check)
+                try
+                    xd0 + xd_check  # verify result is compatible with xd0
+                catch
+                    !SILENT &&
+                        @warn "Model \"$model_name\": fd(xd0, ...) is not structurally compatible with xd0 (xd0::$(typeof(xd0)), fd result::$(typeof(xd_check))). Ensure the dynamics return the same type as the initial state."
+                end
+            end
+        catch
+        end
+    end
+
+    if !structure_only && length(sub_tree) > 0
+        function rebuild_sub_tree(models::NamedTuple, old_sub_tree, captured)
+            return NamedTuple{keys(models)}((
+                (
+                    begin
+                        (cap_uc, cap_ud) = get(captured, objectid(old_sub_tree[fn]), (nothing, nothing))
+                        uc0_c = hasproperty(m_i, :uc0) && m_i.uc0 !== nothing ? nothing : cap_uc
+                        ud0_c = hasproperty(m_i, :ud0) && m_i.ud0 !== nothing ? nothing : cap_ud
+                        init_working_copy(
+                            m_i,
+                            t0 = t0,
+                            Δt = Δt,
+                            uc0 = uc0_c,
+                            ud0 = ud0_c;
+                            level = level + 1,
+                            recursive = true,
+                            structure_only = structure_only,
+                            fieldname = ".$fn",
+                            integrator = integrator,
+                            T = T,
+                        )
+                    end for (m_i, fn) in zip(models, keys(models))
+                )...,
+            ))
+        end
+
+        function rebuild_sub_tree(models::Tuple, old_sub_tree, captured)
+            return (
+                (
+                    begin
+                        (cap_uc, cap_ud) = get(captured, objectid(old_sub_tree[i]), (nothing, nothing))
+                        uc0_c = hasproperty(m_i, :uc0) && m_i.uc0 !== nothing ? nothing : cap_uc
+                        ud0_c = hasproperty(m_i, :ud0) && m_i.ud0 !== nothing ? nothing : cap_ud
+                        init_working_copy(
+                            m_i,
+                            t0 = t0,
+                            Δt = Δt,
+                            uc0 = uc0_c,
+                            ud0 = ud0_c;
+                            level = level + 1,
+                            recursive = true,
+                            structure_only = structure_only,
+                            fieldname = "($i)",
+                            integrator = integrator,
+                            T = T,
+                        )
+                    end for (i, m_i) in enumerate(models)
+                )...,
+            )
+        end
+
+        function rebuild_sub_tree(models::Vector, old_sub_tree, captured)
+            return [
+                begin
+                    (cap_uc, cap_ud) = get(captured, objectid(old_sub_tree[i]), (nothing, nothing))
+                    uc0_c = hasproperty(m_i, :uc0) && m_i.uc0 !== nothing ? nothing : cap_uc
+                    ud0_c = hasproperty(m_i, :ud0) && m_i.ud0 !== nothing ? nothing : cap_ud
+                    init_working_copy(
+                        m_i,
+                        t0 = t0,
+                        Δt = Δt,
+                        uc0 = uc0_c,
+                        ud0 = ud0_c;
+                        level = level + 1,
+                        recursive = true,
+                        structure_only = structure_only,
+                        fieldname = "[$i]",
+                        integrator = integrator,
+                        T = T,
+                    )
+                end for (i, m_i) in enumerate(models)
+            ]
+        end
+
+        global INIT_INPUT_CAPTURE = Dict{UInt64, Tuple{Any, Any}}()
+        try
+            if hasproperty(model, :gc) && model.gc !== nothing
+                gc_probe_kwargs = length(sub_tree) > 0 ? (models = sub_tree,) : ()
+                model.gc(xc0, uc0, optional_p, t0; gc_probe_kwargs...)
+            end
+            if hasproperty(model, :gd) && model.gd !== nothing
+                gd_probe_kwargs = length(sub_tree) > 0 ? (models = sub_tree,) : ()
+                gd_probe_kwargs = wd0 !== nothing ? (gd_probe_kwargs..., w = wd0) : gd_probe_kwargs
+                model.gd(xd0, ud0, optional_p, t0; gd_probe_kwargs...)
+            end
+        catch e
+            global INIT_INPUT_CAPTURE = nothing
+            rethrow()
+        end
+        captured = INIT_INPUT_CAPTURE
+        global INIT_INPUT_CAPTURE = nothing
+
+        needs_rebuild = any(v -> v[1] !== nothing || v[2] !== nothing, values(captured))
+        if needs_rebuild && hasproperty(model, :models) && model.models !== nothing
+            global MODEL_COUNT = model_id
+            sub_tree = rebuild_sub_tree(model.models, sub_tree, captured)
+        end
+    end
+
     ycs0 =
         !structure_only && hasproperty(model, :gc) && model.gc !== nothing ?
         (
@@ -106,13 +262,6 @@ function init_working_copy(
             [model.gc(xc0, uc0, optional_p, t0)]
         ) : nothing
 
-    xd0 =
-        hasproperty(model, :xd0) && model.xd0 !== nothing ?
-        (xd0 === nothing ? model.xd0 : xd0) : xd0
-    ud0 =
-        uc0 === nothing ?
-        (hasproperty(model, :ud0) && model.ud0 !== nothing ? model.ud0 : nothing) : ud0
-    wd0 = hasproperty(model, :wd) ? model.wd(xd0, ud0, optional_p, t0, rng_dt) : nothing
     gd_kwargs = length(sub_tree) > 0 ? (models = sub_tree,) : ()
     gd_kwargs = hasproperty(model, :wd) ? (gd_kwargs..., w = wd0) : gd_kwargs
     yds0 =
@@ -142,10 +291,6 @@ function init_working_copy(
         (callable_dt!) = !structure_only ?
                          (u, t, model_mutable) ->
             model_callable_dt!(u, t, model, model_mutable, T) : nothing,
-        (init!) = !structure_only ? (model_mutable) -> model_init!(model, model_mutable) :
-                  nothing,
-        (destroy!) = !structure_only ?
-                     (model_mutable) -> model_destroy!(model, model_mutable) : nothing,
         Δt = !structure_only && hasproperty(model, :Δt) && model.Δt !== nothing ? model.Δt :
              Δt,
         zero_crossing_tol = !structure_only &&
@@ -167,8 +312,7 @@ function init_working_copy(
               model.fd !== nothing &&
               xd0 !== nothing ? [xd0] : nothing,
         yds = yds0,
-        wds = !structure_only && hasproperty(model, :wd) ?
-              [model.wd(xd0, ud0, optional_p, t0, rng_dt)] : nothing,
+        wds = !structure_only && hasproperty(model, :wd) ? [wd0] : nothing,
         rng_dt = rng_dt,
         models = sub_tree,
     )
@@ -184,13 +328,13 @@ function update_working_copy_ct!(model_mutable, t, xc, yc, T)
         xc !== nothing ? push!(model_mutable.xcs, eltype(model_mutable.xcs)(xc)) : nothing
     catch
         !SILENT &&
-            @error "Could not update CT state evolution. Please check your state variables for type consistency"
+            @error "Could not update CT state evolution in model \"$(model_mutable.name)\". Expected $(eltype(model_mutable.xcs)) but got $(typeof(xc))."
     end
     try
         yc !== nothing ? push!(model_mutable.ycs, eltype(model_mutable.ycs)(yc)) : nothing
     catch
         !SILENT &&
-            @error "Could not update CT output evolution. Please check your output variables for type consistency"
+            @error "Could not update CT output evolution in model \"$(model_mutable.name)\". Expected $(eltype(model_mutable.ycs)) but got $(typeof(yc))."
     end
 end
 
@@ -204,19 +348,19 @@ function update_working_copy_dt!(model_mutable, t, xd, yd, wd, T)
         xd !== nothing ? push!(model_mutable.xds, eltype(model_mutable.xds)(xd)) : nothing
     catch
         !SILENT &&
-            @error "Could not update DT state evolution. Please check your state variables for type consistency"
+            @error "Could not update DT state evolution in model \"$(model_mutable.name)\". Expected $(eltype(model_mutable.xds)) but got $(typeof(xd))."
     end
     try
         yd !== nothing ? push!(model_mutable.yds, eltype(model_mutable.yds)(yd)) : nothing
     catch
         !SILENT &&
-            @error "Could not update DT output evolution. Please check your output variables for type consistency"
+            @error "Could not update DT output evolution in model \"$(model_mutable.name)\". Expected $(eltype(model_mutable.yds)) but got $(typeof(yd))."
     end
     try
         wd !== nothing ? push!(model_mutable.wds, eltype(model_mutable.wds)(wd)) : nothing
     catch
         !SILENT &&
-            @error "Could not update DT random draw evolution. Please check your random variables for type consistency"
+            @error "Could not update DT random draw evolution in model \"$(model_mutable.name)\". Expected $(eltype(model_mutable.wds)) but got $(typeof(wd))."
     end
 end
 
@@ -258,7 +402,7 @@ function post_process(out)
 
     return (
         model_id = out.model_id,
-        Δt = hasproperty(out, :Δt) && out.Δt !== nothing ? out.Δt : Δt,
+        Δt = hasproperty(out, :Δt) ? out.Δt : nothing,
         tcs = out.tcs,
         xcs = post_process_time_series(out.xcs, name = "model $(out.model_id) xcs"),
         ycs = post_process_time_series(out.ycs, name = "model $(out.model_id) ycs"),

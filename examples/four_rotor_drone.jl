@@ -124,12 +124,10 @@ prop_4 = (
 
 ### THE RPM SENSORS
 #
-fd_rpm_sensor = (x, ω, p, t) -> nothing
-
 gd_rpm_sensor = (x, ω, p, t) -> ω
 
 rpm_sensor_1 =
-    (p = nothing, fd = fd_rpm_sensor, gd = gd_rpm_sensor, Δt = 1 // 100, ud0 = 0.0)
+    (p = nothing, gd = gd_rpm_sensor, Δt = 1 // 100, ud0 = 0.0)
 rpm_sensor_2 = rpm_sensor_1
 rpm_sensor_3 = rpm_sensor_1
 rpm_sensor_4 = rpm_sensor_1
@@ -137,8 +135,6 @@ rpm_sensor_4 = rpm_sensor_1
 
 ### THE "POWERED PROP"
 #
-fc_powered_prop = (x, u, p, t; models) -> nothing
-
 function gc_powered_prop(x, r_ω, p, t; models)
     ω = @call! models.motor r_ω
     ft = @call! models.prop ω
@@ -149,7 +145,6 @@ end
 
 powered_prop_1 = (
     p = nothing,
-    fc = fc_powered_prop,
     gc = gc_powered_prop,
     uc0 = 0.0,
     models = (motor = motor_1, prop = prop_1, sensor = rpm_sensor_1),
@@ -167,8 +162,6 @@ powered_prop_4 =
 
 ### THE AIRFRAME
 #
-fc_airframe = (x, u, p, t; models) -> nothing
-
 function gc_airframe(x, r_ω, p, t; models)
     ft_ω_1 = @call! models.powered_prop_1 r_ω[1]
     ft_ω_2 = @call! models.powered_prop_2 r_ω[2]
@@ -199,7 +192,7 @@ end
 
 airframe_config = drone_conf["airframe"]
 airframe = (
-    p = ( # position of the rotors in the B frame
+    p = (
         x_prop_1_B = [
             airframe_config["arm_length"] / sqrt(2),
             airframe_config["arm_length"] / sqrt(2),
@@ -221,7 +214,6 @@ airframe = (
             airframe_config["z_offset"],
         ],
     ),
-    fc = fc_airframe,
     gc = gc_airframe,
     uc0 = [0.0, 0.0, 0.0, 0.0],
     models = (

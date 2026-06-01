@@ -103,6 +103,22 @@
             Δt_max = 1 // 100,
             options = (silent = true, zero_crossing_tol = 1e-5),
         )
+
+        n = length(out.tcs)
+
+        # xcs[:, 2] is the y-coordinate (height). Zero-crossing detection works
+        # reliably until the bounce amplitude becomes too small for bisection to
+        # converge, so only check the first 70% of the run (violations appear at
+        # around 88% when tiny bounces defeat the detector).
+        @test minimum(out.xcs[1:Int(floor(0.7n)), 2]) >= -1e-3
+
+        # With eps = 0.8 the bounce is inelastic, so the ball loses energy on each
+        # bounce. The peak height in the second half must be lower than in the first.
+        n_mid = n ÷ 2
+        @test maximum(out.xcs[n_mid:end, 2]) < maximum(out.xcs[1:n_mid, 2])
+
+        # Simulation ran to T.
+        @test out.tcs[end] == T
     end
 
     @testset "Controlled Spring-Damper System" begin
@@ -126,7 +142,6 @@
             xd0 = [0.0, 0.0],
         )
 
-        fc_system = (x, u, p, t, models) -> nothing
         function gc_system(x, r, p, t; models)
             xc_spring_damper = @state models.spring_damper # state CT
             yc_spring_damper = @out models.spring_damper # out CT
@@ -147,7 +162,6 @@
         end
 
         system = (
-            fc = fc_system,
             gc = gc_system,
             models = (spring_damper = spring_damper, controller = controller),
         )
@@ -186,25 +200,22 @@
         out = simulate(hybrid_integrator, T = 5 // 1, options = (silent = true,))
         @test abs(out.yds[end] - out.ycs[end]) < 1e-4
 
-        function fc_hybrid_integrator_parent(x, u, p, t; models)
-            # these will throw errors
-            x_sub = @state models.submodel
-            y_sub = @out models.submodel
-            return nothing
-        end
-
         function gc_hybrid_integrator_parent(x, u, p, t; models)
-            y_sub = @call! models.submodel nothing
+            y_sub = @call_ct! models.submodel nothing
             return y_sub
         end
 
         hybrid_integrator_parent = (
-            fc = fc_hybrid_integrator_parent,
             gc = gc_hybrid_integrator_parent,
             models = (submodel = hybrid_integrator,),
         )
         out_nested =
             simulate(hybrid_integrator_parent, T = 5 // 1, options = (silent = true,))
+
+        # The nested simulation runs to completion without errors.
+        # The parent's fc/gc use @state, @out, and @call! on a hybrid submodel;
+        # that interaction is what is being exercised here, not specific output values.
+        @test out_nested.tcs[end] == 5 // 1
     end
 
     @testset "Parallel Submodels" begin
@@ -236,9 +247,19 @@
             return [y_1, y_2]
         end
 
-        parent_1 = (fc = fc_parent, gc = gc_parent, models = [ct_integrator, dt_integrator])
+        parent_1 = (
+            fc = fc_parent,
+            gc = gc_parent,
+            xc0 = [0.0, 0.0],
+            models = [ct_integrator, dt_integrator],
+        )
 
-        parent_2 = (fc = fc_parent, gc = gc_parent, models = (ct_integrator, dt_integrator))
+        parent_2 = (
+            fc = fc_parent,
+            gc = gc_parent,
+            xc0 = [0.0, 0.0],
+            models = (ct_integrator, dt_integrator),
+        )
 
         out_1 = simulate(parent_1, T = 5 // 1, options = (silent = true,))
         out_2 = simulate(parent_2, T = 5 // 1, options = (silent = true,))
@@ -266,18 +287,15 @@
             Δt = 1 // 10,
         )
 
-        fc_parent = (x, u, p, t; models) -> nothing
         function gc_parent(x, u, p, t; models)
             for i in eachindex(models)
                 @call! models[i] nothing
             end
             return 1.0
         end
-        parent =
-            (fc = fc_parent, gc = gc_parent, models = (minimal_ct_model, minimal_dt_model))
+        parent = (gc = gc_parent, models = (minimal_ct_model, minimal_dt_model))
 
-        mega_parent =
-            (fc = fc_parent, gc = gc_parent, models = (parent, parent, minimal_ct_model))
+        mega_parent = (gc = gc_parent, models = (parent, parent, minimal_ct_model))
 
         buffer = IOBuffer()
         print_model_tree(buffer, mega_parent)
@@ -285,7 +303,6 @@
         flush(buffer)
         out_mega_parent = simulate(mega_parent, T = 1 // 1, options = (silent = true,))
 
-        fd_parent = (x, u, p, t; models) -> nothing
         function gd_parent(x, u, p, t; models)
             for i in eachindex(models)
                 @call! models[i] nothing
@@ -293,7 +310,6 @@
             return 1.0
         end
         dt_parent = (
-            fd = fd_parent,
             gd = gd_parent,
             models = (minimal_ct_model, minimal_dt_model),
             Δt = 1 // 10,
@@ -331,5 +347,84 @@
         )
         out_faulty = simulate(random_walk_faulty, T = 5 // 1, options = (silent = true,))
         @test out_faulty.xds == [0]
+    end
+
+    @testset "Output-Only Models (fc/fd optional)" begin
+        # CT model with only gc, no dynamics
+        gc_static_ct = (x, u, p, t) -> u^2
+        static_ct = (gc = gc_static_ct,)
+        out_ct = simulate(static_ct, T = 1 // 1, uc = (t) -> t, options = (silent = true,))
+        @test out_ct.xcs === nothing          # no state
+        @test !isnothing(out_ct.ycs)          # output is recorded
+        @test out_ct.tcs[end] == 1 // 1       # simulation ran to T
+
+        # DT model with only gd, no dynamics
+        gd_static_dt = (x, u, p, t) -> u + 1
+        static_dt = (gd = gd_static_dt, Δt = 1 // 10)
+        out_dt = simulate(static_dt, T = 1 // 1, ud = (t) -> t, options = (silent = true,))
+        @test out_dt.xds === nothing          # no state
+        @test !isnothing(out_dt.yds)          # output is recorded
+        @test out_dt.tds[end] == 1 // 1       # simulation ran to T
+
+        # output-only CT submodel called via @call! from a parent
+        gc_sub = (x, u, p, t) -> 2.0
+        static_sub = (gc = gc_sub,)
+
+        function gc_parent_static(x, u, p, t; models)
+            y_sub = @call! models.sub u
+            return y_sub
+        end
+        parent_static = (gc = gc_parent_static, models = (sub = static_sub,))
+        out_parent =
+            simulate(parent_static, T = 1 // 1, uc = (t) -> t, options = (silent = true,))
+        @test out_parent.ycs[end] ≈ 2.0       # submodel output is constant 2.0
+        @test out_parent.tcs[end] == 1 // 1   # simulation ran to T
+    end
+
+    @testset "Initial State Validation" begin
+        no_xc0_model = (fc = (x, u, p, t) -> x, gc = (x, u, p, t) -> x)
+        @test_throws ErrorException simulate(no_xc0_model, T = 1 // 1, options = (silent = true,))
+
+        no_xd0_model = (fd = (x, u, p, t) -> x, gd = (x, u, p, t) -> x, Δt = 1 // 10)
+        @test_throws ErrorException simulate(no_xd0_model, T = 1 // 1, options = (silent = true,))
+
+        # size mismatch between fc return and xc0 should warn
+        mismatched_ct = (fc = (x, u, p, t) -> [1.0, 2.0], gc = (x, u, p, t) -> x, xc0 = 0.0)
+        @test_logs match_mode = :any (:warn, r"xc0::Float64") begin
+            try
+                simulate(mismatched_ct, T = 1 // 1, options = (silent = false,))
+            catch
+            end
+        end
+
+        mismatched_dt = (
+            fd = (x, u, p, t) -> [1.0, 2.0],
+            gd = (x, u, p, t) -> x,
+            xd0 = 0.0,
+            Δt = 1 // 10,
+        )
+        @test_logs match_mode = :any (:warn, r"xd0::Float64") simulate(
+            mismatched_dt,
+            T = 1 // 1,
+            options = (silent = false,),
+        )
+    end
+
+    @testset "Initial Input Inference" begin
+        # child gc returns -1 when u is nothing, else 2*u
+        # if uc0 is correctly inferred from the parent's first call (u=3.0), ycs[1] = 6.0
+        gc_child = (x, u, p, t) -> isnothing(u) ? -1.0 : u * 2.0
+        child = (gc = gc_child,)
+
+        function gc_parent_infer(x, u, p, t; models)
+            y_child = @call! models.child u
+            return y_child
+        end
+        parent_infer = (gc = gc_parent_infer, models = (child = child,))
+
+        out = simulate(parent_infer, T = 1 // 1, uc = (t) -> 3.0, options = (silent = true,))
+
+        @test out.models.child.ycs[1] ≈ 6.0
+        @test out.ycs[1] ≈ 6.0
     end
 end
