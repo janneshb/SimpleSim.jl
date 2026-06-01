@@ -83,6 +83,8 @@ function simulate(
     # evaluate options, if given any
     @set_options DEFAULT_CONFIG
     @set_options (out_stream = out_stream, options...)
+    global MODEL_CALLS_DISABLED = false
+    global CONTEXT = ContextUnknown::SimulationContext
 
     min_logging_level = DEBUG ? Debug : Info
     logger = SimpleLogger(OUT_STREAM, min_logging_level)
@@ -195,8 +197,7 @@ macro call!(model, u)
         model_to_call = $(esc(model))
         t = $(esc(:t))
         if isHybrid(model_to_call)
-            !SILENT &&
-                @error "@call! is ambiguous for hybrid systems. Please specify using @call_ct! or @call_dt!."
+            error("@call! is ambiguous for hybrid systems. Please specify using @call_ct! or @call_dt!.")
         elseif isCT(model_to_call)
             @call_ct! model_to_call $(esc(u))
         elseif isDT(model_to_call)
@@ -214,7 +215,6 @@ See [`@call!`](@ref).
 macro call_ct!(model, u)
     quote
         MODEL_CALLS_DISABLED &&
-            !SILENT &&
             !SILENT &&
             @error "@call! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in unambiguous cases)."
 

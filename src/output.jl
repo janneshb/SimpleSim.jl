@@ -26,6 +26,7 @@ function init_working_copy(
                     recursive = true,
                     structure_only = structure_only,
                     fieldname = ".$fieldname_i",
+                    integrator = integrator,
                     T = T,
                 ) for (m_i, fieldname_i) in zip(models, fieldnames(typeof(models)))
             )...,
@@ -45,6 +46,7 @@ function init_working_copy(
                     recursive = true,
                     structure_only = structure_only,
                     fieldname = "($fieldname_i)",
+                    integrator = integrator,
                     T = T,
                 ) for (m_i, fieldname_i) in zip(models, fieldnames(typeof(models)))
             )...,
@@ -63,6 +65,7 @@ function init_working_copy(
                 recursive = true,
                 structure_only = structure_only,
                 fieldname = "[$i]",
+                integrator = integrator,
                 T = T,
             ) for (i, m_i) in enumerate(models)
         ]
@@ -110,9 +113,9 @@ function init_working_copy(
         hasproperty(model, :xd0) && model.xd0 !== nothing ?
         (xd0 === nothing ? model.xd0 : xd0) : xd0
     ud0 =
-        uc0 === nothing ?
+        ud0 === nothing ?
         (hasproperty(model, :ud0) && model.ud0 !== nothing ? model.ud0 : nothing) : ud0
-    wd0 = hasproperty(model, :wd) ? model.wd(xd0, ud0, optional_p, t0, rng_dt) : nothing
+    wd0 = !structure_only && hasproperty(model, :wd) ? model.wd(xd0, ud0, optional_p, t0, rng_dt) : nothing
     gd_kwargs = length(sub_tree) > 0 ? (models = sub_tree,) : ()
     gd_kwargs = hasproperty(model, :wd) ? (gd_kwargs..., w = wd0) : gd_kwargs
     yds0 =
@@ -167,8 +170,7 @@ function init_working_copy(
               model.fd !== nothing &&
               xd0 !== nothing ? [xd0] : nothing,
         yds = yds0,
-        wds = !structure_only && hasproperty(model, :wd) ?
-              [model.wd(xd0, ud0, optional_p, t0, rng_dt)] : nothing,
+        wds = !structure_only && hasproperty(model, :wd) ? [wd0] : nothing,
         rng_dt = rng_dt,
         models = sub_tree,
     )
@@ -258,7 +260,7 @@ function post_process(out)
 
     return (
         model_id = out.model_id,
-        Δt = hasproperty(out, :Δt) && out.Δt !== nothing ? out.Δt : Δt,
+        Δt = hasproperty(out, :Δt) ? out.Δt : nothing,
         tcs = out.tcs,
         xcs = post_process_time_series(out.xcs, name = "model $(out.model_id) xcs"),
         ycs = post_process_time_series(out.ycs, name = "model $(out.model_id) ycs"),

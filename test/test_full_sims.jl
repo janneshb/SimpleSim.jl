@@ -203,14 +203,13 @@
         @test abs(out.yds[end] - out.ycs[end]) < 1e-4
 
         function fc_hybrid_integrator_parent(x, u, p, t; models)
-            # these will throw errors
-            x_sub = @state models.submodel
-            y_sub = @out models.submodel
+            x_sub = @state_ct models.submodel
+            y_sub = @out_ct models.submodel
             return nothing
         end
 
         function gc_hybrid_integrator_parent(x, u, p, t; models)
-            y_sub = @call! models.submodel nothing
+            y_sub = @call_ct! models.submodel nothing
             return y_sub
         end
 
