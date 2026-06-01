@@ -352,4 +352,38 @@
         out_faulty = simulate(random_walk_faulty, T = 5 // 1, options = (silent = true,))
         @test out_faulty.xds == [0]
     end
+
+    @testset "Output-Only Models (fc/fd optional)" begin
+        # CT model with only gc — static output function, no dynamics
+        gc_static_ct = (x, u, p, t) -> u^2
+        static_ct = (gc = gc_static_ct,)
+        out_ct = simulate(static_ct, T = 1 // 1, uc = (t) -> t, options = (silent = true,))
+        @test out_ct.xcs === nothing          # no state
+        @test !isnothing(out_ct.ycs)          # output is recorded
+        @test out_ct.tcs[end] == 1 // 1       # simulation ran to T
+
+        # DT model with only gd — static output function, no dynamics
+        gd_static_dt = (x, u, p, t) -> u + 1
+        static_dt = (gd = gd_static_dt, Δt = 1 // 10)
+        out_dt = simulate(static_dt, T = 1 // 1, ud = (t) -> t, options = (silent = true,))
+        @test out_dt.xds === nothing          # no state
+        @test !isnothing(out_dt.yds)          # output is recorded
+        @test out_dt.tds[end] == 1 // 1       # simulation ran to T
+
+        # Output-only CT submodel called via @call! from a parent
+        # gc_sub uses only t (not u) to avoid the uc0=nothing issue at init
+        # (input inheritance for submodels is a v0.1.6 TODO, not yet implemented)
+        gc_sub = (x, u, p, t) -> 2.0
+        static_sub = (gc = gc_sub,)
+
+        function gc_parent_static(x, u, p, t; models)
+            y_sub = @call! models.sub u
+            return y_sub
+        end
+        parent_static = (gc = gc_parent_static, models = (sub = static_sub,))
+        out_parent =
+            simulate(parent_static, T = 1 // 1, uc = (t) -> t, options = (silent = true,))
+        @test out_parent.ycs[end] ≈ 2.0       # submodel output is constant 2.0
+        @test out_parent.tcs[end] == 1 // 1   # simulation ran to T
+    end
 end

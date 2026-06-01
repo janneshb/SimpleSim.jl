@@ -145,10 +145,6 @@ function init_working_copy(
         (callable_dt!) = !structure_only ?
                          (u, t, model_mutable) ->
             model_callable_dt!(u, t, model, model_mutable, T) : nothing,
-        (init!) = !structure_only ? (model_mutable) -> model_init!(model, model_mutable) :
-                  nothing,
-        (destroy!) = !structure_only ?
-                     (model_mutable) -> model_destroy!(model, model_mutable) : nothing,
         Δt = !structure_only && hasproperty(model, :Δt) && model.Δt !== nothing ? model.Δt :
              Δt,
         zero_crossing_tol = !structure_only &&
