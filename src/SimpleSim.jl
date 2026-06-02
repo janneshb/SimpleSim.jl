@@ -4,7 +4,7 @@ using Random
 import Logging.Info, Logging.Debug, Logging.SimpleLogger, Logging.global_logger
 import Base.push!, Base.@inline, Base.gcd
 
-global VERSION = "0.1.6"
+global VERSION = "0.1.7"
 global YEAR = "2026"
 global AUTHORS = "Jannes Huehnerbein"
 
