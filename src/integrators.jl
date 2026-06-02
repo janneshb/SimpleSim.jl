@@ -20,7 +20,7 @@ function step_ct(Δt, fc, x, args...; integrator = RK4)
     elseif integrator == RKF45
         return step_rkf45(Δt, fc, x, args...)
     else
-        !SILENT && @error "Integration method not supported."
+        !SILENT && @error "Integration method $integrator is not supported. Supported methods: RK4, Euler, Heun, RKF45."
     end
 end
 

@@ -210,7 +210,7 @@ macro call_ct!(model, u)
     quote
         MODEL_CALLS_DISABLED &&
             !SILENT &&
-            @error "@call! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in unambiguous cases)."
+            @error "@call_ct! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in unambiguous cases)."
 
         model_to_call = $(esc(model))
         (Δt, xc, yc, updated_state) =
@@ -229,7 +229,7 @@ macro call_dt!(model, u)
     quote
         MODEL_CALLS_DISABLED &&
             !SILENT &&
-            @error "@call! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in unambiguous cases)."
+            @error "@call_dt! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in unambiguous cases)."
 
         model_to_call = $(esc(model))
         (xd, yd, updated_state) =
@@ -250,7 +250,7 @@ function model_callable_ct!(uc, t, model, model_mutable, Δt, integrator, T)
     context = @context # Warn if we are still in DT context
     if context === ContextDT::SimulationContext
         !SILENT &&
-            @warn "You are calling a CT model (id $(model_mutable.model_id)) from within a DT model. This should not be done and will lead to unexpected results"
+            @warn "You are calling a CT model (id $(model_mutable.model_id)) from within a DT model. This will lead to unexpected results. Use @out_ct to read the previous CT output instead."
     end
 
     xc_next = model_mutable.xcs === nothing ? nothing : model_mutable.xcs[end]
@@ -315,7 +315,7 @@ function model_callable_ct!(uc, t, model, model_mutable, Δt, integrator, T)
                             break # termination of algorithm if within +/-(zero_crossing_tol/2)
                         end
                     catch
-                        !SILENT && @warn "Zero-crossing tolerance could not be met."
+                        !SILENT && @warn "Zero-crossing tolerance could not be met (likely a Rational arithmetic overflow). Consider using Float64 timesteps or increasing zero_crossing_tol in options."
                         break # probably a Rational overflow occurred. Accept current tolerance but print warning
                     end
                 end
