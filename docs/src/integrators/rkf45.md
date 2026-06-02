@@ -68,7 +68,7 @@ You can read more about this on [Wikipedia](https://en.wikipedia.org/wiki/Rungeâ
 
 ## Performance
 
-For obivious reasons, Runge-Kutta-Fehlberg is the slowest method supported by `SimpleSim.jl`.
+For obvious reasons, Runge-Kutta-Fehlberg is the slowest method supported by `SimpleSim.jl`.
 The system dynamics function is called at least six times and for stiff problems the adaptive step size can get very small causing the simulation to become very slow.
 
 However, for certain classes of problems, adaptive step size methods are absolutely necessary. Especially system's with sensitive dependence on initial conditions, i. e. chaotic systems, can be solved much faster and with higher precision using adaptive step size methods. The only alternative would be using a fixed step size method with a very small step size. This, however, would be computationally more expensive in a lot of cases.
