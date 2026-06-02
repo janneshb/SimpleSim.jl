@@ -14,7 +14,7 @@ function due(model, t)
         elseif context == ContextDT::SimulationContext
             return model.tds[end] + model.Δt <= t
         else
-            !SILENT && @error "Could not determine if the model is due to update."
+            !SILENT && @error "Could not determine if model $(model.model_id) is due to update (context: $context)."
         end
     end
     return false

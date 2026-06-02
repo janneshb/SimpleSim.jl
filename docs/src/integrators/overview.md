@@ -1,4 +1,4 @@
-# Continuous-Time Intgration Methods -- An Overview
+# Continuous-Time Integration Methods -- An Overview
 
 ### Available Solving Methods
 

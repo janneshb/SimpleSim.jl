@@ -1,4 +1,4 @@
-# Miscellanoues Functionalities
+# Miscellaneous Functionalities
 
 ### Analyzing the Model Structure
 

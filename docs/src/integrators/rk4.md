@@ -40,8 +40,8 @@ x^+ = x + \frac{\Delta t}{6} (k_1 + 2 k_2 + 2 k_3 + k_4)
 
 The fourth-order Runge-Kutta method requires four calls of the dynamics function and is therefore the slowest out of all fixed step-size methods provided by `SimpleSim.jl`.
 
-In most cases, however, the evaluation of $f$ is fast enought so that `RK4` can be used as the standard integration method.
+In most cases, however, the evaluation of $f$ is fast enough so that `RK4` can be used as the standard integration method.
 
-The advantages in terms of precision compared to first and second order methods are imense and generally RK4 is sufficiently exact.
+The advantages in terms of precision compared to first and second order methods are immense and generally RK4 is sufficiently exact.
 
 In rare cases, however, an adaptive step-size variation of RK4 should be used. See the chapter about Runge-Kutta-Fehlberg for more information.

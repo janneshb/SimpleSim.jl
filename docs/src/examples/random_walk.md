@@ -61,10 +61,10 @@ function wd_random_walk(x, u, p, t, rng)
         return [0, 1]
     elseif r < p.p_f + p.p_b
         return [0, -1]
-    elseif r < p.p_f + p.p_b + p_l
+    elseif r < p.p_f + p.p_b + p.p_l
         return [-1, 0]
     else
-        return[1, 0]
+        return [1, 0]
     end
 end
 ```
