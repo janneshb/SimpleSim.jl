@@ -6,6 +6,12 @@
 simulate(model)
 ```
 
+## Integration Methods
+
+```@docs
+SimpleSimIntegrator
+```
+
 ## Updating Submodels
 
 ```@docs

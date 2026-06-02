@@ -12,6 +12,6 @@ Numerical integration methods for continuous-time simulations. Pass to the `inte
 - `Heun`: Heun's method (explicit trapezoidal, 2nd-order). More accurate than Euler at similar cost.
 - `RKF45`: Runge-Kutta-Fehlberg with adaptive step size. Most accurate; best for stiff or sensitive systems.
 
-See the [integrators overview](@ref) for a detailed comparison.
+See the integrators overview in the manual for a detailed comparison.
 """
 @enum SimpleSimIntegrator RK4 = 1 Euler = 2 Heun = 3 RKF45 = 4
