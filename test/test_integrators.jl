@@ -101,8 +101,8 @@
         # dx/dt = -50x with dt=0.1 produces a large truncation error, so step_rkf45
         # recurses with a smaller dt and returns the accepted (smaller) step.
         fc_stiff = (x, u, p, t) -> -50.0 * x
-        _, Δt_adapted = SimpleSim.step_rkf45(
-            1 // 10, fc_stiff, 1.0, nothing, nothing, 0 // 1, (;),
+        _, Δt_adapted = SimpleSim.step_ct(
+            1 // 10, fc_stiff, 1.0, nothing, nothing, 0 // 1, (;); integrator = RKF45,
         )
         @test Δt_adapted < 0.1   # step was reduced to meet the tolerance
     end
