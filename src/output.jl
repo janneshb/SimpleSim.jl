@@ -281,16 +281,31 @@ function init_working_copy(
         temp_type
     end
 
+    # Pre-resolve all model field accesses once so the simulation-loop closures capture
+    # concrete-typed values instead of performing hasproperty introspection every step.
+    # Each captured variable has a concrete type (e.g. MyParams or Nothing, never a Union),
+    # which lets Julia specialize the callables fully at compile time.
+    _fc           = hasproperty(model, :fc)       ? model.fc       : nothing
+    _gc           = hasproperty(model, :gc)       ? model.gc       : nothing
+    _zc           = hasproperty(model, :zc)       ? model.zc       : nothing
+    _zc_exec      = hasproperty(model, :zc_exec)  ? model.zc_exec  : nothing
+    _fd           = hasproperty(model, :fd)       ? model.fd       : nothing
+    _gd           = hasproperty(model, :gd)       ? model.gd       : nothing
+    _wd_fn        = hasproperty(model, :wd)       ? model.wd       : nothing
+    _has_submodels = length(sub_tree) > 0
+
     working_copy = (
         name = model_name,
         model_id = model_id,
         type = type,
         (callable_ct!) = !structure_only ?
                          (u, t, model_mutable) ->
-            model_callable_ct!(u, t, model, model_mutable, Δt, integrator, T) : nothing,
+            model_callable_ct!(u, t, model_mutable, Δt, integrator, T,
+                               optional_p, _fc, _gc, _zc, _zc_exec, sub_tree, _has_submodels) : nothing,
         (callable_dt!) = !structure_only ?
                          (u, t, model_mutable) ->
-            model_callable_dt!(u, t, model, model_mutable, T) : nothing,
+            model_callable_dt!(u, t, model_mutable, T,
+                               optional_p, _fd, _gd, _wd_fn, sub_tree, _has_submodels) : nothing,
         Δt = !structure_only && hasproperty(model, :Δt) && model.Δt !== nothing ? model.Δt :
              Δt,
         zero_crossing_tol = !structure_only &&
