@@ -196,6 +196,11 @@ macro call!(model, u)
             @call_ct! model_to_call $(esc(u))
         elseif isDT(model_to_call)
             @call_dt! model_to_call $(esc(u))
+        else
+            error(
+                "@call! received a model with unknown type (\"$(model_to_call.name)\"). " *
+                "Ensure the model defines fc/gc (CT) or fd/gd (DT) functions.",
+            )
         end
     end
 end
@@ -208,10 +213,12 @@ See [`@call!`](@ref).
 """
 macro call_ct!(model, u)
     quote
-        MODEL_CALLS_DISABLED &&
-            !SILENT &&
-            @error "@call_ct! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in unambiguous cases)."
-
+        if MODEL_CALLS_DISABLED
+            error(
+                "@call_ct! must not be called inside a dynamics function (fc / fd). " *
+                "Use @out_ct or @out to read the previous output instead.",
+            )
+        end
         model_to_call = $(esc(model))
         (Δt, xc, yc, updated_state) =
             model_to_call.callable_ct!($(esc(u)), $(esc(:t)), model_to_call)
@@ -227,10 +234,12 @@ See [`@call!`](@ref).
 """
 macro call_dt!(model, u)
     quote
-        MODEL_CALLS_DISABLED &&
-            !SILENT &&
-            @error "@call_dt! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in unambiguous cases)."
-
+        if MODEL_CALLS_DISABLED
+            error(
+                "@call_dt! must not be called inside a dynamics function (fc / fd). " *
+                "Use @out_dt or @out to read the previous output instead.",
+            )
+        end
         model_to_call = $(esc(model))
         (xd, yd, updated_state) =
             model_to_call.callable_dt!($(esc(u)), $(esc(:t)), model_to_call)
@@ -248,10 +257,12 @@ function model_callable_ct!(uc, t, model_mutable, Δt, integrator_val::Val, T,
         return (Δt, xc, yc, false)
     end
 
-    context = @context # Warn if we are still in DT context
+    context = @context # Warn if called from within a DT output function
     if context === ContextDT::SimulationContext
         !SILENT &&
-            @warn "You are calling a CT model (id $(model_mutable.model_id)) from within a DT model. This will lead to unexpected results. Use @out_ct to read the previous CT output instead."
+            @warn "CT model \"$(model_mutable.name)\" was called from inside a DT output function. " *
+                  "This produces unexpected results because the CT state has not yet been advanced to the current time. " *
+                  "Use @out_ct to read the previous CT output instead."
     end
 
     xc_next = model_mutable.xcs === nothing ? nothing : model_mutable.xcs[end]
