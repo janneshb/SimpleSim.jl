@@ -281,7 +281,7 @@ function init_working_copy(
         temp_type
     end
 
-    return (
+    working_copy = (
         name = model_name,
         model_id = model_id,
         type = type,
@@ -316,6 +316,22 @@ function init_working_copy(
         rng_dt = rng_dt,
         models = sub_tree,
     )
+
+    # Pre-allocate vector capacity to avoid repeated doubling during the simulation loop.
+    if !structure_only && T !== nothing
+        n_ct = ceil(Int, float(T) / float(Δt)) + 2
+        Δt_dt = hasproperty(model, :Δt) && model.Δt !== nothing ? model.Δt : Δt
+        n_dt = ceil(Int, float(T) / float(Δt_dt)) + 2
+        working_copy.tcs !== nothing && sizehint!(working_copy.tcs, n_ct)
+        working_copy.xcs !== nothing && sizehint!(working_copy.xcs, n_ct)
+        working_copy.ycs !== nothing && sizehint!(working_copy.ycs, n_ct)
+        working_copy.tds !== nothing && sizehint!(working_copy.tds, n_dt)
+        working_copy.xds !== nothing && sizehint!(working_copy.xds, n_dt)
+        working_copy.yds !== nothing && sizehint!(working_copy.yds, n_dt)
+        working_copy.wds !== nothing && sizehint!(working_copy.wds, n_dt)
+    end
+
+    return working_copy
 end
 
 # adds an entry (tc, xc, yc) to the working copy of the model
