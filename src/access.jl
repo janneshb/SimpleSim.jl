@@ -35,7 +35,13 @@ See [`@out`](@ref).
 """
 macro out_ct(model)
     quote
-        $(esc(model)).ycs[end]
+        let m = $(esc(model))
+            m.ycs === nothing && error(
+                "@out_ct: model \"$(m.name)\" has no CT output. " *
+                "Ensure the model defines a gc function.",
+            )
+            m.ycs[end]
+        end
     end
 end
 
@@ -47,7 +53,13 @@ See [`@out`](@ref).
 """
 macro out_dt(model)
     quote
-        $(esc(model)).yds[end]
+        let m = $(esc(model))
+            m.yds === nothing && error(
+                "@out_dt: model \"$(m.name)\" has no DT output. " *
+                "Ensure the model defines a gd function.",
+            )
+            m.yds[end]
+        end
     end
 end
 
@@ -89,7 +101,13 @@ See [`@state`](@ref).
 """
 macro state_ct(model)
     quote
-        $(esc(model)).xcs[end]
+        let m = $(esc(model))
+            m.xcs === nothing && error(
+                "@state_ct: model \"$(m.name)\" has no CT state. " *
+                "Ensure the model defines fc and xc0.",
+            )
+            m.xcs[end]
+        end
     end
 end
 
@@ -101,6 +119,12 @@ See [`@state`](@ref).
 """
 macro state_dt(model)
     quote
-        $(esc(model)).xds[end]
+        let m = $(esc(model))
+            m.xds === nothing && error(
+                "@state_dt: model \"$(m.name)\" has no DT state. " *
+                "Ensure the model defines fd and xd0.",
+            )
+            m.xds[end]
+        end
     end
 end

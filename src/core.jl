@@ -196,6 +196,11 @@ macro call!(model, u)
             @call_ct! model_to_call $(esc(u))
         elseif isDT(model_to_call)
             @call_dt! model_to_call $(esc(u))
+        else
+            error(
+                "@call! received a model with unknown type (\"$(model_to_call.name)\"). " *
+                "Ensure the model defines fc/gc (CT) or fd/gd (DT) functions.",
+            )
         end
     end
 end
@@ -208,10 +213,12 @@ See [`@call!`](@ref).
 """
 macro call_ct!(model, u)
     quote
-        MODEL_CALLS_DISABLED &&
-            !SILENT &&
-            @error "@call_ct! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in unambiguous cases)."
-
+        if MODEL_CALLS_DISABLED
+            error(
+                "@call_ct! must not be called inside a dynamics function (fc / fd). " *
+                "Use @out_ct or @out to read the previous output instead.",
+            )
+        end
         model_to_call = $(esc(model))
         (Δt, xc, yc, updated_state) =
             model_to_call.callable_ct!($(esc(u)), $(esc(:t)), model_to_call)
@@ -227,10 +234,12 @@ See [`@call!`](@ref).
 """
 macro call_dt!(model, u)
     quote
-        MODEL_CALLS_DISABLED &&
-            !SILENT &&
-            @error "@call_dt! should not be called in the dynamics or step function. Use @out_ct and @out_dt to access the previous state instead (or @out in unambiguous cases)."
-
+        if MODEL_CALLS_DISABLED
+            error(
+                "@call_dt! must not be called inside a dynamics function (fc / fd). " *
+                "Use @out_dt or @out to read the previous output instead.",
+            )
+        end
         model_to_call = $(esc(model))
         (xd, yd, updated_state) =
             model_to_call.callable_dt!($(esc(u)), $(esc(:t)), model_to_call)
@@ -238,8 +247,8 @@ macro call_dt!(model, u)
     end
 end
 
-function model_callable_ct!(uc, t, model_mutable, Δt, integrator, T,
-                             optional_p, fc, gc, zc, zc_exec, submodels, has_submodels)
+function model_callable_ct!(uc, t, model_mutable, Δt, integrator_val::Val, T,
+                             optional_p, fc, gc, zc, zc_exec, submodels, has_submodels_val::Val)
     if INIT_INPUT_CAPTURE !== nothing
         existing = get(INIT_INPUT_CAPTURE, objectid(model_mutable), (nothing, nothing))
         INIT_INPUT_CAPTURE[objectid(model_mutable)] = (uc, existing[2])
@@ -248,10 +257,12 @@ function model_callable_ct!(uc, t, model_mutable, Δt, integrator, T,
         return (Δt, xc, yc, false)
     end
 
-    context = @context # Warn if we are still in DT context
+    context = @context # Warn if called from within a DT output function
     if context === ContextDT::SimulationContext
         !SILENT &&
-            @warn "You are calling a CT model (id $(model_mutable.model_id)) from within a DT model. This will lead to unexpected results. Use @out_ct to read the previous CT output instead."
+            @warn "CT model \"$(model_mutable.name)\" was called from inside a DT output function. " *
+                  "This produces unexpected results because the CT state has not yet been advanced to the current time. " *
+                  "Use @out_ct to read the previous CT output instead."
     end
 
     xc_next = model_mutable.xcs === nothing ? nothing : model_mutable.xcs[end]
@@ -264,15 +275,11 @@ function model_callable_ct!(uc, t, model_mutable, Δt, integrator, T,
         t_next = model_mutable.tcs[end] + Δt_actual
 
         if fc !== nothing
-            xc_next, Δt_actual = step_ct(
-                Δt,
-                fc,
+            xc_next, Δt_actual = _step_ct(
+                integrator_val, has_submodels_val,
+                Δt, fc,
                 model_mutable.xcs === nothing ? nothing : model_mutable.xcs[end],
-                uc,
-                optional_p,
-                model_mutable.tcs[end],
-                submodels;
-                integrator = integrator,
+                uc, optional_p, model_mutable.tcs[end], submodels,
             )
             t_next = model_mutable.tcs[end] + Δt_actual
 
@@ -288,15 +295,9 @@ function model_callable_ct!(uc, t, model_mutable, Δt, integrator, T,
                 while true
                     try
                         Δt_bi = (t_upper - t_lower) / 2
-                        xc_bi, _ = step_ct(
-                            Δt_bi,
-                            fc,
-                            xc_lower,
-                            uc,
-                            optional_p,
-                            t_lower,
-                            submodels;
-                            integrator = RK4,
+                        xc_bi, _ = _step_ct(
+                            Val(RK4), has_submodels_val,
+                            Δt_bi, fc, xc_lower, uc, optional_p, t_lower, submodels,
                         )
                         zc_bi = zc(xc_bi, optional_p, t_lower + Δt_bi)
 
@@ -319,31 +320,19 @@ function model_callable_ct!(uc, t, model_mutable, Δt, integrator, T,
                 end
 
                 xc_next = zc_exec(xc_next, uc, optional_p, t_next) # apply zero crossing change
-                yc_next =
-                    has_submodels ?
-                    gc(xc_next, uc, optional_p, t_next; models = submodels) :
-                    gc(xc_next, uc, optional_p, t_next)
+                yc_next = _call_fc(gc, xc_next, uc, optional_p, t_next, submodels, has_submodels_val)
                 Δt_post_zc = model_mutable.tcs[end] + Δt_actual - t_next
                 update_working_copy_ct!(model_mutable, t_next, xc_next, yc_next, T)
 
                 # fill in the remaining time of Δt to avoid Rational overflow in future iterations
-                xc_next, _ = step_ct(
-                    Δt_post_zc,
-                    fc,
-                    xc_next,
-                    uc,
-                    optional_p,
-                    t_next,
-                    submodels;
-                    integrator = RK4,
+                xc_next, _ = _step_ct(
+                    Val(RK4), has_submodels_val,
+                    Δt_post_zc, fc, xc_next, uc, optional_p, t_next, submodels,
                 )
                 t_next += Δt_post_zc
             end
         end
-        yc_next =
-            has_submodels ?
-            gc(xc_next, uc, optional_p, t_next; models = submodels) :
-            gc(xc_next, uc, optional_p, t_next)
+        yc_next = _call_fc(gc, xc_next, uc, optional_p, t_next, submodels, has_submodels_val)
         update_working_copy_ct!(model_mutable, t_next, xc_next, yc_next, T)
         updated_state = true
     end
@@ -352,7 +341,7 @@ function model_callable_ct!(uc, t, model_mutable, Δt, integrator, T,
 end
 
 function model_callable_dt!(ud, t, model_mutable, T,
-                             optional_p, fd, gd, wd_fn, submodels, has_submodels)
+                             optional_p, fd, gd, wd_fn, submodels, has_submodels_val::Val)
     if INIT_INPUT_CAPTURE !== nothing
         existing = get(INIT_INPUT_CAPTURE, objectid(model_mutable), (nothing, nothing))
         INIT_INPUT_CAPTURE[objectid(model_mutable)] = (existing[1], ud)
@@ -382,7 +371,7 @@ function model_callable_dt!(ud, t, model_mutable, T,
                 wd_next,
             )
         end
-        gd_kwargs = has_submodels ? (models = submodels,) : ()
+        gd_kwargs = has_submodels_val isa Val{true} ? (models = submodels,) : ()
         gd_kwargs = wd_next === nothing ? gd_kwargs : (gd_kwargs..., w = wd_next)
         yd_next = gd(xd_next, ud, optional_p, t; gd_kwargs...)
         update_working_copy_dt!(model_mutable, t, xd_next, yd_next, wd_next, T)
