@@ -1,6 +1,7 @@
 using Test
 using SimpleSim
 using Statistics
+using StaticArrays
 using Unitful
 
 include("test_integrators.jl")

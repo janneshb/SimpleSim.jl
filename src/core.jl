@@ -238,7 +238,8 @@ macro call_dt!(model, u)
     end
 end
 
-function model_callable_ct!(uc, t, model, model_mutable, Δt, integrator, T)
+function model_callable_ct!(uc, t, model_mutable, Δt, integrator, T,
+                             optional_p, fc, gc, zc, zc_exec, submodels, has_submodels)
     if INIT_INPUT_CAPTURE !== nothing
         existing = get(INIT_INPUT_CAPTURE, objectid(model_mutable), (nothing, nothing))
         INIT_INPUT_CAPTURE[objectid(model_mutable)] = (uc, existing[2])
@@ -255,19 +256,17 @@ function model_callable_ct!(uc, t, model, model_mutable, Δt, integrator, T)
 
     xc_next = model_mutable.xcs === nothing ? nothing : model_mutable.xcs[end]
     yc_next = model_mutable.ycs === nothing ? nothing : model_mutable.ycs[end]
-    submodels = hasproperty(model_mutable, :models) ? model_mutable.models : (;)
     Δt_actual = Δt
 
     @ct
     updated_state = false
     if due(model_mutable, t)
-        optional_p = hasproperty(model, :p) ? model.p : nothing
         t_next = model_mutable.tcs[end] + Δt_actual
 
-        if hasproperty(model, :fc) && model.fc !== nothing
+        if fc !== nothing
             xc_next, Δt_actual = step_ct(
                 Δt,
-                model.fc,
+                fc,
                 model_mutable.xcs === nothing ? nothing : model_mutable.xcs[end],
                 uc,
                 optional_p,
@@ -278,9 +277,8 @@ function model_callable_ct!(uc, t, model, model_mutable, Δt, integrator, T)
             t_next = model_mutable.tcs[end] + Δt_actual
 
             # Zero-crossing detection if `zc` is defined
-            if hasproperty(model, :zc) &&
-               model.zc !== nothing &&
-               model.zc(xc_next, optional_p, t_next) < -model_mutable.zero_crossing_tol
+            if zc !== nothing &&
+               zc(xc_next, optional_p, t_next) < -model_mutable.zero_crossing_tol
                 # Initialize bisection algorithm
                 xc_lower = model_mutable.xcs[end]
                 t_lower = model_mutable.tcs[end]
@@ -292,7 +290,7 @@ function model_callable_ct!(uc, t, model, model_mutable, Δt, integrator, T)
                         Δt_bi = (t_upper - t_lower) / 2
                         xc_bi, _ = step_ct(
                             Δt_bi,
-                            model.fc,
+                            fc,
                             xc_lower,
                             uc,
                             optional_p,
@@ -300,7 +298,7 @@ function model_callable_ct!(uc, t, model, model_mutable, Δt, integrator, T)
                             submodels;
                             integrator = RK4,
                         )
-                        zc_bi = model.zc(xc_bi, optional_p, t_lower + Δt_bi)
+                        zc_bi = zc(xc_bi, optional_p, t_lower + Δt_bi)
 
                         if zc_bi < -model_mutable.zero_crossing_tol / 2
                             # t_lower + Δt_bi still leads to zero crossing
@@ -320,18 +318,18 @@ function model_callable_ct!(uc, t, model, model_mutable, Δt, integrator, T)
                     end
                 end
 
-                xc_next = model.zc_exec(xc_next, uc, optional_p, t_next) # apply zero crossing change
+                xc_next = zc_exec(xc_next, uc, optional_p, t_next) # apply zero crossing change
                 yc_next =
-                    length(submodels) > 0 ?
-                    model.gc(xc_next, uc, optional_p, t_next; models = submodels) :
-                    model.gc(xc_next, uc, optional_p, t_next)
+                    has_submodels ?
+                    gc(xc_next, uc, optional_p, t_next; models = submodels) :
+                    gc(xc_next, uc, optional_p, t_next)
                 Δt_post_zc = model_mutable.tcs[end] + Δt_actual - t_next
                 update_working_copy_ct!(model_mutable, t_next, xc_next, yc_next, T)
 
                 # fill in the remaining time of Δt to avoid Rational overflow in future iterations
                 xc_next, _ = step_ct(
                     Δt_post_zc,
-                    model.fc,
+                    fc,
                     xc_next,
                     uc,
                     optional_p,
@@ -343,9 +341,9 @@ function model_callable_ct!(uc, t, model, model_mutable, Δt, integrator, T)
             end
         end
         yc_next =
-            length(submodels) > 0 ?
-            model.gc(xc_next, uc, optional_p, t_next; models = submodels) :
-            model.gc(xc_next, uc, optional_p, t_next)
+            has_submodels ?
+            gc(xc_next, uc, optional_p, t_next; models = submodels) :
+            gc(xc_next, uc, optional_p, t_next)
         update_working_copy_ct!(model_mutable, t_next, xc_next, yc_next, T)
         updated_state = true
     end
@@ -353,7 +351,8 @@ function model_callable_ct!(uc, t, model, model_mutable, Δt, integrator, T)
     return (Δt_actual, xc_next, yc_next, updated_state)
 end
 
-function model_callable_dt!(ud, t, model, model_mutable, T)
+function model_callable_dt!(ud, t, model_mutable, T,
+                             optional_p, fd, gd, wd_fn, submodels, has_submodels)
     if INIT_INPUT_CAPTURE !== nothing
         existing = get(INIT_INPUT_CAPTURE, objectid(model_mutable), (nothing, nothing))
         INIT_INPUT_CAPTURE[objectid(model_mutable)] = (existing[1], ud)
@@ -366,17 +365,15 @@ function model_callable_dt!(ud, t, model, model_mutable, T)
     xd_next = model_mutable.xds === nothing ? nothing : model_mutable.xds[end]
     yd_next = model_mutable.yds === nothing ? nothing : model_mutable.yds[end]
     wd_next = model_mutable.wds === nothing ? nothing : model_mutable.wds[end]
-    submodels = hasproperty(model_mutable, :models) ? model_mutable.models : (;)
 
     updated_state = false
     if due(model_mutable, t)
-        optional_p = hasproperty(model, :p) ? model.p : nothing
         wd_next =
-            hasproperty(model, :wd) ?
-            model.wd(xd_next, ud, optional_p, t, model_mutable.rng_dt) : nothing
-        if hasproperty(model, :fd) && model.fd !== nothing
+            wd_fn !== nothing ?
+            wd_fn(xd_next, ud, optional_p, t, model_mutable.rng_dt) : nothing
+        if fd !== nothing
             xd_next = step_dt(
-                model.fd,
+                fd,
                 model_mutable.xds === nothing ? nothing : model_mutable.xds[end],
                 ud,
                 optional_p,
@@ -385,9 +382,9 @@ function model_callable_dt!(ud, t, model, model_mutable, T)
                 wd_next,
             )
         end
-        gd_kwargs = length(submodels) > 0 ? (models = submodels,) : ()
+        gd_kwargs = has_submodels ? (models = submodels,) : ()
         gd_kwargs = wd_next === nothing ? gd_kwargs : (gd_kwargs..., w = wd_next)
-        yd_next = model.gd(xd_next, ud, optional_p, t; gd_kwargs...)
+        yd_next = gd(xd_next, ud, optional_p, t; gd_kwargs...)
         update_working_copy_dt!(model_mutable, t, xd_next, yd_next, wd_next, T)
         updated_state = true
     end

@@ -138,4 +138,41 @@
         @test isnothing(x_ct)
         @test Δt == 1 // 10
     end
+
+    @testset "StaticArrays SVector States" begin
+        # SimpleSim uses only generic Julia arithmetic (+, *, /) so SVector initial
+        # states work out of the box — all intermediate values stay stack-allocated.
+
+        # CT: 2D harmonic oscillator, compare SVector vs Vector results
+        fc_ho = (x, u, p, t) -> SA[x[2], -x[1]]
+        x0_vec = [0.0, 1.0]
+        x0_static = SA[0.0, 1.0]
+        Δt = 1 // 100
+
+        x_vec, _ = SimpleSim.step_ct(Δt, fc_ho, x0_vec, nothing, nothing, 0 // 1, (;))
+        x_static, _ = SimpleSim.step_ct(Δt, fc_ho, x0_static, nothing, nothing, 0 // 1, (;))
+
+        @test x_static isa SVector
+        @test x_vec ≈ collect(x_static)
+
+        # Full simulate() with SVector initial state
+        model = (xc0 = SA[0.0, 1.0], fc = fc_ho, gc = (x, u, p, t) -> x)
+        out = simulate(model, T = 1 // 1, options = (silent = true,))
+
+        @test out.xcs isa Matrix
+        @test size(out.xcs, 2) == 2
+        @test out.tcs[end] == 1 // 1
+        # first component should approximate sin(t): x[1](t=1) ≈ sin(1)
+        @test abs(out.xcs[end, 1] - sin(1.0)) < 1e-6
+
+        # DT: SVector state in a discrete-time model
+        fd_dt = (x, u, p, t) -> SA[x[1] + 1, x[2] - 1]
+        gd_dt = (x, u, p, t) -> x
+        model_dt = (xd0 = SA[0, 0], fd = fd_dt, gd = gd_dt, Δt = 1 // 10)
+        out_dt = simulate(model_dt, T = 1 // 1, options = (silent = true,))
+
+        @test out_dt.xds isa Matrix
+        @test out_dt.xds[end, 1] == 10
+        @test out_dt.xds[end, 2] == -10
+    end
 end

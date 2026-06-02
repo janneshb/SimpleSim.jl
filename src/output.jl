@@ -281,16 +281,31 @@ function init_working_copy(
         temp_type
     end
 
-    return (
+    # Pre-resolve all model field accesses once so the simulation-loop closures capture
+    # concrete-typed values instead of performing hasproperty introspection every step.
+    # Each captured variable has a concrete type (e.g. MyParams or Nothing, never a Union),
+    # which lets Julia specialize the callables fully at compile time.
+    _fc           = hasproperty(model, :fc)       ? model.fc       : nothing
+    _gc           = hasproperty(model, :gc)       ? model.gc       : nothing
+    _zc           = hasproperty(model, :zc)       ? model.zc       : nothing
+    _zc_exec      = hasproperty(model, :zc_exec)  ? model.zc_exec  : nothing
+    _fd           = hasproperty(model, :fd)       ? model.fd       : nothing
+    _gd           = hasproperty(model, :gd)       ? model.gd       : nothing
+    _wd_fn        = hasproperty(model, :wd)       ? model.wd       : nothing
+    _has_submodels = length(sub_tree) > 0
+
+    working_copy = (
         name = model_name,
         model_id = model_id,
         type = type,
         (callable_ct!) = !structure_only ?
                          (u, t, model_mutable) ->
-            model_callable_ct!(u, t, model, model_mutable, Δt, integrator, T) : nothing,
+            model_callable_ct!(u, t, model_mutable, Δt, integrator, T,
+                               optional_p, _fc, _gc, _zc, _zc_exec, sub_tree, _has_submodels) : nothing,
         (callable_dt!) = !structure_only ?
                          (u, t, model_mutable) ->
-            model_callable_dt!(u, t, model, model_mutable, T) : nothing,
+            model_callable_dt!(u, t, model_mutable, T,
+                               optional_p, _fd, _gd, _wd_fn, sub_tree, _has_submodels) : nothing,
         Δt = !structure_only && hasproperty(model, :Δt) && model.Δt !== nothing ? model.Δt :
              Δt,
         zero_crossing_tol = !structure_only &&
@@ -316,6 +331,22 @@ function init_working_copy(
         rng_dt = rng_dt,
         models = sub_tree,
     )
+
+    # Pre-allocate vector capacity to avoid repeated doubling during the simulation loop.
+    if !structure_only && T !== nothing
+        n_ct = ceil(Int, float(T) / float(Δt)) + 2
+        Δt_dt = hasproperty(model, :Δt) && model.Δt !== nothing ? model.Δt : Δt
+        n_dt = ceil(Int, float(T) / float(Δt_dt)) + 2
+        working_copy.tcs !== nothing && sizehint!(working_copy.tcs, n_ct)
+        working_copy.xcs !== nothing && sizehint!(working_copy.xcs, n_ct)
+        working_copy.ycs !== nothing && sizehint!(working_copy.ycs, n_ct)
+        working_copy.tds !== nothing && sizehint!(working_copy.tds, n_dt)
+        working_copy.xds !== nothing && sizehint!(working_copy.xds, n_dt)
+        working_copy.yds !== nothing && sizehint!(working_copy.yds, n_dt)
+        working_copy.wds !== nothing && sizehint!(working_copy.wds, n_dt)
+    end
+
+    return working_copy
 end
 
 # adds an entry (tc, xc, yc) to the working copy of the model
