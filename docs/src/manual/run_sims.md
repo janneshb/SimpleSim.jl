@@ -16,7 +16,7 @@ __Optional__ Keyword Arguments:
 * `xc0` initial state for continuous-time models, defaults to `nothing`. Overwrites the initial state given in the model definition.
 * `xd0` initial state for discrete-time models, defaults to `nothing`. Overwrites the initial state given in the model definition.
 * `Δt_max` maximum step size used for continuous-time integration, defaults to `1//100`
-* `integrator` integration method for continuous-time models, defaults to `RK4`. See the [integrators overview](@ref) for available methods.
+* `integrator` integration method for continuous-time models, defaults to `RK4`. See the [integrators overview](../integrators/overview.md) for available methods.
 * `options` a `NamedTuple` of additional simulation options, see below.
 
 ## Options
